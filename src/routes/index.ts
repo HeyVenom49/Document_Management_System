@@ -4,6 +4,6 @@ import authRoutes from "../modules/auth/auth.routes.ts";
 
 const router = Router();
 
-router.post("/auth", authRoutes);
+router.use("/auth", authRoutes);
 
 export default router;

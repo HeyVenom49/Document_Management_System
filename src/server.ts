@@ -1,7 +1,7 @@
 import app from "./app.ts";
 import { connectDB } from "./database/index.ts";
 
-const port = process.env.PORT;
+const port = Number(process.env.PORT) || 3000;
 
 const startServer = async () => {
   await connectDB();

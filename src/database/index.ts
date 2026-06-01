@@ -16,6 +16,7 @@ export const db = drizzle(pool);
 export async function connectDB() {
   try {
     await pool.query("SELECT 1");
+    console.log("Database connected successfully");
   } catch (err) {
     throw new Error(`Failed to connect the database`, { cause: err });
   }
