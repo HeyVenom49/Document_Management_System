@@ -6,7 +6,7 @@ export const folders = pgTable("folders", {
   name: text("name").notNull(),
   ownerId: uuid("owner_id")
     .notNull()
-    .references((): any => folders.id, {
+    .references((): any => users.id, {
       onDelete: "cascade",
     }),
   parentId: uuid("parent_id").references((): any => folders.id, {
