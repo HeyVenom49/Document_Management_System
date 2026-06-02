@@ -1,6 +1,7 @@
 import argon2 from "argon2";
 import { userRepository } from "../users/user.repository.ts";
 import type { LoginInput, RegisterInput } from "./auth.schema.ts";
+import { generateAccessToken } from "../../common/utils/jwt.ts";
 
 export class AuthService {
   async register(data: RegisterInput) {
@@ -37,11 +38,14 @@ export class AuthService {
       throw new Error("Email or Password might be wrong");
     }
 
-    return {
-      id: user.id,
+    const accessToken = generateAccessToken({
       username: user.username,
       email: user.email,
-      createdAt: user.created_at,
+    });
+
+    return {
+      id: user.id,
+      accessToken,
     };
   }
 }
