@@ -32,20 +32,36 @@ export class AuthService {
     if (!user) {
       throw new Error("Email or Password might be wrong");
     }
-    const isPasswordCorrect = argon2.verify(user.password_hash, data.password);
+    const isPasswordCorrect = await argon2.verify(
+      user.password_hash,
+      data.password,
+    );
 
     if (!isPasswordCorrect) {
       throw new Error("Email or Password might be wrong");
     }
 
     const accessToken = generateAccessToken({
-      username: user.username,
-      email: user.email,
+      userId: user.id,
     });
 
     return {
       id: user.id,
       accessToken,
+    };
+  }
+
+  async me(userId: string) {
+    const user = await userRepository.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
     };
   }
 }

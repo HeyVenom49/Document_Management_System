@@ -1,8 +1,7 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
 
 type AccessTokenType = {
-  username: string;
-  email: string;
+  userId: string;
 };
 
 const getEnvVariable = (key: string) => {
@@ -28,7 +27,14 @@ const generateAccessToken = (payload: AccessTokenType) => {
 };
 
 const verifyAccessToken = (token: string) => {
-  return jwt.verify(token, accessToken);
+  const payload = jwt.verify(token, accessToken);
+
+  if (typeof payload === "string" || typeof payload.userId !== "string")
+    throw new Error("Invalid access token payload");
+
+  return {
+    userId: payload.userId,
+  };
 };
 
 export { generateAccessToken, verifyAccessToken };

@@ -24,6 +24,15 @@ export class AuthController {
       data: user,
     });
   }
+
+  async me(req: Request, res: Response) {
+    const user = await authService.me(req.user!.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  }
 }
 
 export const authController = new AuthController();
