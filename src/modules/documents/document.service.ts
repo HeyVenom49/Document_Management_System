@@ -25,7 +25,10 @@ export class DocumentService {
       }
     }
 
-    const uploadFile = await uploadToCloudinary(file.buffer);
+    const uploadFile = await uploadToCloudinary(
+      file.buffer,
+      file.mimetype,
+    );
 
     const document = await documentRepository.create({
       name: file.originalname,

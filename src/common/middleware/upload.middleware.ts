@@ -1,18 +1,7 @@
 import multer from "multer";
+import path from "node:path";
 
 const storage = multer.memoryStorage();
-
-const allowedMimeTypes = [
-  "application/pdf",
-
-  "application/msword",
-
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-
-  "image/png",
-
-  "image/jpeg",
-];
 
 export const upload = multer({
   storage,
@@ -20,9 +9,13 @@ export const upload = multer({
     fileSize: 10 * 1024 * 1024,
   },
   fileFilter: (_, file, cb) => {
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      return cb(new Error("Unsupported file type"));
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExtension = [".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"];
+
+    if (allowedExtension.includes(ext)) {
+      return cb(null, true);
     }
-    cb(null, true);
+
+    return cb(new Error("Unsupported file type"));
   },
 });

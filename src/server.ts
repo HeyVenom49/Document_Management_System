@@ -1,3 +1,4 @@
+import "./config/env.ts";
 import app from "./app.ts";
 import { connectDB } from "./database/index.ts";
 

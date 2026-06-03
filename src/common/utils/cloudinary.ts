@@ -1,28 +1,19 @@
-import type { UploadApiErrorResponse, UploadApiResponse } from "cloudinary";
+import type { UploadApiResponse } from "cloudinary";
 
-import cloudinary from "../../config/cloudinary.ts";
+import cloudinary, {
+  cloudinaryCredentials,
+} from "../../config/cloudinary.ts";
 
 export const uploadToCloudinary = (
   buffer: Buffer,
+  mimeType: string,
   folder = "dms",
 ): Promise<UploadApiResponse> => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "auto",
-      },
-      (
-        error: UploadApiErrorResponse | undefined,
-        result: UploadApiResponse | undefined,
-      ) => {
-        if (error) return reject(error);
+  const dataUri = `data:${mimeType || "application/octet-stream"};base64,${buffer.toString("base64")}`;
 
-        if (!result) return reject(new Error("Cloudinary upload failed"));
-
-        resolve(result);
-      },
-    );
-    stream.end();
+  return cloudinary.uploader.upload(dataUri, {
+    ...cloudinaryCredentials,
+    folder,
+    resource_type: "auto",
   });
 };
