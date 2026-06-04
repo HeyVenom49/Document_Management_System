@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { uploadDocumentSchema } from "./document.schema.ts";
 import { documentService } from "./document.service.ts";
 
@@ -29,7 +30,7 @@ export class DocumentController {
 
   async getDocumentById(req: Request<{ id: string }>, res: Response) {
     const { id } = req.params;
-    if (typeof id !== "string") throw new Error("Invalid id");
+    if (typeof id !== "string") throw new BadRequest("Invalid id");
     const document = await documentService.getDocumentById(id);
 
     return res.status(201).json({

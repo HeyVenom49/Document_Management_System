@@ -1,8 +1,9 @@
-import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import { AppError } from "../common/errors/app.error.ts";
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("Database url missing");
+  throw new AppError("Database url missing", 500);
 }
 
 const pool = new pg.Pool({
@@ -18,6 +19,6 @@ export async function connectDB() {
     await pool.query("SELECT 1");
     console.log("Database connected successfully");
   } catch (err) {
-    throw new Error(`Failed to connect the database`, { cause: err });
+    throw new AppError("Failed to connect the database", 500);
   }
 }

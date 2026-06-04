@@ -1,3 +1,6 @@
+import { BadRequest } from "../../common/errors/bad-request.error.ts";
+import { Forbidden } from "../../common/errors/forbidden.error.ts";
+import { NotFound } from "../../common/errors/not-found.error.ts";
 import { uploadToCloudinary } from "../../common/utils/cloudinary.ts";
 import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
@@ -10,18 +13,18 @@ export class DocumentService {
     userId: string,
   ) {
     if (!file) {
-      throw new Error("File is required");
+      throw new BadRequest("File is required");
     }
 
     if (data.folderId) {
       const folder = await folderRepository.findById(data.folderId);
 
       if (!folder) {
-        throw new Error("Folder not found");
+        throw new NotFound("Folder not found");
       }
 
       if (folder.ownerId !== userId) {
-        throw new Error("Access Denied");
+        throw new Forbidden();
       }
     }
 
@@ -50,7 +53,7 @@ export class DocumentService {
   async getDocumentById(documentId: string) {
     const document = await documentRepository.findById(documentId);
 
-    if (!document) throw new Error("Document not found");
+    if (!document) throw new NotFound("Document not found");
 
     return document;
   }

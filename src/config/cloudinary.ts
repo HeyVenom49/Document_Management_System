@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import { AppError } from "../common/errors/app.error.ts";
 
 import "./env.ts";
 
@@ -14,8 +15,9 @@ function readCloudinaryCredentials() {
   ].filter(Boolean);
 
   if (missing.length > 0) {
-    throw new Error(
+    throw new AppError(
       `Missing Cloudinary env vars: ${missing.join(", ")}. Add them to .env and restart the server.`,
+      500,
     );
   }
 

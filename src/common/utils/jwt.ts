@@ -1,4 +1,6 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
+import { AppError } from "../errors/app.error.ts";
+import { Unauthorized } from "../errors/unauthorized.error.ts";
 
 type AccessTokenType = {
   userId: string;
@@ -7,7 +9,7 @@ type AccessTokenType = {
 const getEnvVariable = (key: string) => {
   const value = process.env[key];
 
-  if (!value) throw new Error(`${key} is missing`);
+  if (!value) throw new AppError(`${key} is missing`, 500);
 
   return value;
 };
@@ -30,7 +32,7 @@ const verifyAccessToken = (token: string) => {
   const payload = jwt.verify(token, accessToken);
 
   if (typeof payload === "string" || typeof payload.userId !== "string")
-    throw new Error("Invalid access token payload");
+    throw new Unauthorized("Invalid access token payload");
 
   return {
     userId: payload.userId,
