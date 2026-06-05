@@ -30,4 +30,10 @@ router.delete(
   documentController.deleteDocument.bind(documentController),
 );
 
+router.get(
+  "/folder/:folderId",
+  authMiddleware,
+  documentController.getDocumentsByFolder.bind(documentController),
+);
+
 export default router;

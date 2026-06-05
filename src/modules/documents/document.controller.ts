@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { documentIdSchema, uploadDocumentSchema } from "./document.schema.ts";
 import { documentService } from "./document.service.ts";
+import { success } from "zod";
 
 export class DocumentController {
   async uploadDocument(req: Request, res: Response) {
@@ -47,6 +48,23 @@ export class DocumentController {
     return res.status(200).json({
       success: true,
       ...result,
+    });
+  }
+
+  async getDocumentsByFolder(
+    req: Request<{ folderId: string }>,
+    res: Response,
+  ) {
+    const { folderId } = req.params;
+
+    const documents = await documentService.getDocumentsByFolder(
+      folderId,
+      req.user!.userId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: documents,
     });
   }
 }

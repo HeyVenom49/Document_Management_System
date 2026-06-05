@@ -84,6 +84,16 @@ export class DocumentService {
       message: "Document deleted successfully",
     };
   }
+
+  async getDocumentsByFolder(folderId: string, userId: string) {
+    const folder = await folderRepository.findById(folderId);
+
+    if (!folder) throw new NotFound("Folder not found");
+
+    if (folder.ownerId !== userId) throw new Forbidden("Access Denied");
+
+    return await documentRepository.findByFolderId(folderId);
+  }
 }
 
 export const documentService = new DocumentService();

@@ -54,6 +54,13 @@ export class DocumentRepository {
 
     return document ?? null;
   }
+
+  async findByFolderId(folderId: string) {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.folderId, folderId));
+  }
 }
 
 export const documentRepository = new DocumentRepository();
