@@ -1,3 +1,4 @@
+import { AppError } from "../../common/errors/app.error.ts";
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { Forbidden } from "../../common/errors/forbidden.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
@@ -38,6 +39,7 @@ export class DocumentService {
       ownerId: userId,
       folderId: data.folderId ?? null,
       cloudinaryPublicId: uploadFile.public_id,
+      cloudinaryResourceType: uploadFile.resource_type,
       fileUrl: uploadFile.secure_url,
       mimeType: file.mimetype,
       fileSize: file.size,
@@ -50,10 +52,12 @@ export class DocumentService {
     return await documentRepository.findByOwnerId(userId);
   }
 
-  async getDocumentById(documentId: string) {
+  async getDocumentById(documentId: string, userId: string) {
     const document = await documentRepository.findById(documentId);
 
     if (!document) throw new NotFound("Document not found");
+
+    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
 
     return document;
   }
@@ -65,9 +69,16 @@ export class DocumentService {
 
     if (document.ownerId !== userId) throw new Forbidden("Access Denied");
 
-    await deleteFromCloudinary(document.cloudinaryPublicId);
+    await deleteFromCloudinary(
+      document.cloudinaryPublicId,
+      document.cloudinaryResourceType,
+    );
 
-    await documentRepository.deleteById(documentId);
+    const deleted = await documentRepository.deleteById(documentId);
+
+    if (!deleted) {
+      throw new AppError("Failed to delete document record", 500);
+    }
 
     return {
       message: "Document deleted successfully",

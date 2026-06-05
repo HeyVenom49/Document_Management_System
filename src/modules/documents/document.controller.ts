@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
-import { BadRequest } from "../../common/errors/bad-request.error.ts";
-import { uploadDocumentSchema } from "./document.schema.ts";
+import { documentIdSchema, uploadDocumentSchema } from "./document.schema.ts";
 import { documentService } from "./document.service.ts";
 
 export class DocumentController {
@@ -29,9 +28,11 @@ export class DocumentController {
   }
 
   async getDocumentById(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-    if (typeof id !== "string") throw new BadRequest("Invalid id");
-    const document = await documentService.getDocumentById(id);
+    const id = documentIdSchema.parse(req.params.id);
+    const document = await documentService.getDocumentById(
+      id,
+      req.user!.userId,
+    );
 
     return res.status(201).json({
       success: true,
@@ -40,7 +41,7 @@ export class DocumentController {
   }
 
   async deleteDocument(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
+    const id = documentIdSchema.parse(req.params.id);
     const result = await documentService.deleteDocument(id, req.user!.userId);
 
     return res.status(200).json({

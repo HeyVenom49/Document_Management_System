@@ -14,6 +14,7 @@ export const documents = pgTable("documents", {
     onDelete: "cascade",
   }),
   cloudinaryPublicId: text("cloudinary_public_id").notNull(),
+  cloudinaryResourceType: text("cloudinary_resource_type"),
   fileUrl: text("file_url").notNull(),
   mimeType: text("mime_type").notNull(),
   fileSize: bigint("file_size", {

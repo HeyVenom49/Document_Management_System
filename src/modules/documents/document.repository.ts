@@ -8,6 +8,7 @@ export class DocumentRepository {
     ownerId: string;
     folderId?: string | null;
     cloudinaryPublicId: string;
+    cloudinaryResourceType: string;
     fileUrl: string;
     mimeType: string;
     fileSize: number;
@@ -19,6 +20,7 @@ export class DocumentRepository {
         ownerId: data.ownerId,
         folderId: data.folderId ?? null,
         cloudinaryPublicId: data.cloudinaryPublicId,
+        cloudinaryResourceType: data.cloudinaryResourceType,
         fileUrl: data.fileUrl,
         mimeType: data.mimeType,
         fileSize: data.fileSize,
