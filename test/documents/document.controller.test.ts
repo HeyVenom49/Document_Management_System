@@ -28,6 +28,12 @@ const deleteDocument = mock(async () => ({
   message: "Document deleted successfully",
 }));
 
+const updateDocument = mock(async () => ({
+  id: documentId,
+  name: "Updated contract.pdf",
+  ownerId: "user-1",
+}));
+
 const getDocumentsByFolder = mock(async () => [
   {
     id: documentId,
@@ -43,6 +49,7 @@ mock.module("../../src/modules/documents/document.service.ts", () => ({
     getDocuments,
     getDocumentById,
     deleteDocument,
+    updateDocument,
     getDocumentsByFolder,
   },
 }));
@@ -57,6 +64,7 @@ describe("document endpoints", () => {
     getDocuments.mockClear();
     getDocumentById.mockClear();
     deleteDocument.mockClear();
+    updateDocument.mockClear();
     getDocumentsByFolder.mockClear();
   });
 
@@ -140,6 +148,30 @@ describe("document endpoints", () => {
       message: "Document deleted successfully",
     });
     expect(deleteDocument).toHaveBeenCalledWith(documentId, "user-1");
+  });
+
+  it("PATCH /documents/:id updates document metadata", async () => {
+    const response = createResponse();
+
+    await documentController.updateDocumet(
+      {
+        params: { id: documentId },
+        body: { name: "Updated contract.pdf" },
+        user: { userId: "user-1" },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: { id: documentId, name: "Updated contract.pdf" },
+    });
+    expect(updateDocument).toHaveBeenCalledWith(
+      documentId,
+      { name: "Updated contract.pdf" },
+      "user-1",
+    );
   });
 
   it("GET /documents/folder/:folderId returns documents inside a folder", async () => {

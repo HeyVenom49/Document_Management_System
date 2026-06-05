@@ -1,37 +1,22 @@
 # Document Management System
 
-A backend API for a document management system built with Bun, Express, TypeScript, PostgreSQL, Drizzle ORM, JWT authentication, Cloudinary file storage, and Zod validation.
+A Bun + Express backend API for managing users, folders, and uploaded documents. The API uses PostgreSQL with Drizzle ORM, JWT authentication, Zod validation, Multer uploads, and Cloudinary for file storage.
 
-## Implemented So Far
+## Features
 
-- Express application bootstrap with centralized route registration and error handling.
-- PostgreSQL connection using `pg` and Drizzle ORM.
-- Drizzle schema groundwork for users, folders, and documents.
-- Docker Compose setup for local PostgreSQL.
-- Authentication module:
-  - Register users with hashed passwords using Argon2.
-  - Login users and issue JWT access tokens.
-  - Fetch the authenticated user's profile with `Bearer` token auth.
-- Folder module:
-  - Create folders for authenticated users.
-  - Support optional nested folders through `parentId`.
-  - Validate folder ownership before creating child folders.
-  - List folders owned by the authenticated user.
-- Document module:
-  - Upload files with Multer.
-  - Store uploaded files in Cloudinary.
-  - Persist document metadata in PostgreSQL, including Cloudinary resource type.
-  - Optionally attach documents to folders.
-  - Validate folder ownership before upload.
-  - List documents owned by the authenticated user.
-  - Fetch a document by id (owner only).
-  - Delete a document by id (owner only), removing the file from Cloudinary and the database record.
-- Shared middleware and utilities:
-  - JWT generation and verification.
-  - Auth middleware that attaches `req.user`.
-  - File upload middleware.
-  - Cloudinary upload and delete helpers.
-  - Custom application errors for bad request, unauthorized, forbidden, and not found cases.
+- User authentication with registration, login, JWT access tokens, and current-user profile lookup.
+- Password hashing with Argon2.
+- Protected routes through Bearer token authentication.
+- Folder management for authenticated users.
+- Nested folders through an optional `parentId`.
+- Ownership checks before using parent folders or folder-scoped document operations.
+- Document upload through `multipart/form-data`.
+- Cloudinary-backed document storage with persisted metadata.
+- Document listing, lookup, update, folder filtering, and deletion.
+- Cloudinary cleanup when deleting documents.
+- Centralized validation, error handling, and custom application errors.
+- PostgreSQL schema and migrations managed with Drizzle Kit.
+- Controller tests for auth, folder, and document flows.
 
 ## Tech Stack
 
@@ -45,6 +30,7 @@ A backend API for a document management system built with Bun, Express, TypeScri
 - Password hashing: Argon2
 - File uploads: Multer
 - File storage: Cloudinary
+- Tests: Bun test
 
 ## Project Structure
 
@@ -53,21 +39,25 @@ src/
   app.ts                         # Express app setup
   server.ts                      # Server startup and database connection
   routes/index.ts                # Mounted API routes
-  config/                        # Environment, logger, Cloudinary config
+  config/                        # Environment, logger, and Cloudinary config
   database/                      # Drizzle database connection and schemas
   common/
     errors/                      # Custom AppError classes
-    middleware/                  # Auth, validation, upload, error middleware
+    middleware/                  # Auth, validation, upload, and error middleware
     utils/                       # JWT and Cloudinary helpers
   modules/
-    auth/                        # Register, login, current user
-    users/                       # User repository/service groundwork
+    auth/                        # Register, login, and current-user APIs
+    users/                       # User repository groundwork
     folders/                     # Folder APIs
-    documents/                   # Document upload, lookup, and delete APIs
+    documents/                   # Document upload, lookup, update, and delete APIs
     documents-versions/          # Version module groundwork
-    tags/                        # Tag module groundwork
-    permisssions/                # Permission module groundwork
-    audit/                       # Audit module groundwork
+
+test/
+  helpers/                       # Shared test utilities
+  auth/                          # Auth controller tests
+  folders/                       # Folder controller tests
+  documents/                     # Document controller tests
+  tsconfig.json                  # TypeScript config for tests
 ```
 
 ## Environment Variables
@@ -112,7 +102,7 @@ bun run db:generate
 bun run db:migrate
 ```
 
-You can also push the schema directly during local development:
+For local development, you can also push the schema directly:
 
 ```bash
 bun run db:push
@@ -146,17 +136,33 @@ bun run start
 
 The server defaults to `http://localhost:3000` when `PORT` is not set.
 
+## Testing
+
+Run the test suite:
+
+```bash
+bun run test
+```
+
+## Authentication
+
+Protected endpoints require an access token in the `Authorization` header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
 ## API Endpoints
 
-Routes currently mounted in `src/routes/index.ts`:
+Routes are mounted directly from `src/routes/index.ts`.
 
 ### Auth
 
-| Method | Endpoint         | Auth | Description                        |
-| ------ | ---------------- | ---- | ---------------------------------- |
-| POST   | `/auth/register` | No   | Create a new user                  |
-| POST   | `/auth/login`    | No   | Login and receive an access token  |
-| GET    | `/auth/me`       | Yes  | Get the authenticated user profile |
+| Method | Endpoint         | Auth | Description                       |
+| ------ | ---------------- | ---- | --------------------------------- |
+| POST   | `/auth/register` | No   | Create a new user                 |
+| POST   | `/auth/login`    | No   | Login and receive an access token |
+| GET    | `/auth/me`       | Yes  | Get the authenticated user        |
 
 Register body:
 
@@ -193,14 +199,18 @@ Create folder body:
 }
 ```
 
+`parentId` is optional. When provided, it must be a valid UUID for a folder owned by the authenticated user.
+
 ### Documents
 
-| Method | Endpoint            | Auth | Description                              |
-| ------ | ------------------- | ---- | ---------------------------------------- |
-| POST   | `/documents/upload` | Yes  | Upload a document file                   |
-| GET    | `/documents`        | Yes  | List documents owned by the current user |
-| GET    | `/documents/:id`    | Yes  | Get a document by id (owner only)        |
-| DELETE | `/documents/:id`    | Yes  | Delete a document by id (owner only)     |
+| Method | Endpoint                       | Auth | Description                              |
+| ------ | ------------------------------ | ---- | ---------------------------------------- |
+| POST   | `/documents/upload`            | Yes  | Upload a document file                   |
+| GET    | `/documents`                   | Yes  | List documents owned by the current user |
+| GET    | `/documents/:id`               | Yes  | Get a document by id                     |
+| GET    | `/documents/folder/:folderId`  | Yes  | List documents in a folder               |
+| PATCH  | `/documents/:id`               | Yes  | Update document metadata                 |
+| DELETE | `/documents/:id`               | Yes  | Delete a document                        |
 
 Upload documents as `multipart/form-data`:
 
@@ -209,7 +219,16 @@ Upload documents as `multipart/form-data`:
 | file     | File           | Yes      | File to upload                      |
 | folderId | String or null | No       | Folder id to attach the document to |
 
-`:id` must be a valid UUID.
+Update document body:
+
+```json
+{
+  "name": "Updated filename.pdf",
+  "folderId": null
+}
+```
+
+At least one update field must be provided. `folderId` can be a valid folder UUID or `null` to move the document out of a folder.
 
 Delete response:
 
@@ -220,29 +239,15 @@ Delete response:
 }
 ```
 
-On delete, the API removes the file from Cloudinary using the stored resource type (with fallback for older records), then deletes the database row. If Cloudinary deletion fails, the database record is kept.
+## Useful Scripts
 
-Authenticated requests must include:
-
-```http
-Authorization: Bearer <accessToken>
-```
-
-## Available Scripts
-
-| Script                | Description                                   |
-| --------------------- | --------------------------------------------- |
-| `bun run dev`         | Start the server in watch mode                |
-| `bun run build`       | Compile TypeScript                            |
-| `bun run start`       | Run compiled JavaScript from `dist/server.js` |
-| `bun run db:generate` | Generate Drizzle migration files              |
-| `bun run db:migrate`  | Run Drizzle migrations                        |
-| `bun run db:push`     | Push schema changes to the database           |
-| `bun run studio`      | Open Drizzle Studio                           |
-
-## Notes
-
-- Tag, version, permission, share, and audit-related folders/files exist as groundwork, but their API routes are not currently mounted.
-- `documents-versions`, `tags`, `permisssions`, and `audit` modules should be completed and wired into `src/routes/index.ts` when their endpoints are ready.
-- The folder route is currently mounted as `/folder`.
-- After pulling schema changes, run `bun run db:migrate` (or `bun run db:push` locally) to apply new columns such as `cloudinary_resource_type` on documents.
+| Command               | Description                          |
+| --------------------- | ------------------------------------ |
+| `bun run dev`         | Start the API in watch mode          |
+| `bun run build`       | Compile TypeScript into `dist/`      |
+| `bun run start`       | Run the compiled server              |
+| `bun run test`        | Run controller tests                 |
+| `bun run db:generate` | Generate Drizzle migrations          |
+| `bun run db:migrate`  | Apply Drizzle migrations             |
+| `bun run db:push`     | Push schema changes during local dev |
+| `bun run studio`      | Open Drizzle Studio                  |
