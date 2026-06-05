@@ -24,16 +24,22 @@ router.get(
   documentController.getDocumentById.bind(documentController),
 );
 
-router.delete(
-  "/:id",
-  authMiddleware,
-  documentController.deleteDocument.bind(documentController),
-);
-
 router.get(
   "/folder/:folderId",
   authMiddleware,
   documentController.getDocumentsByFolder.bind(documentController),
+);
+
+router.patch(
+  "/:id",
+  authMiddleware,
+  documentController.updateDocumet.bind(documentController),
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  documentController.deleteDocument.bind(documentController),
 );
 
 export default router;

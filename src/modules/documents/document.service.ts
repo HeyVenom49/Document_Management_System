@@ -8,7 +8,10 @@ import {
 } from "../../common/utils/cloudinary.ts";
 import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
-import type { UploadDocumentInput } from "./document.schema.ts";
+import type {
+  UpdateDocumentInput,
+  UploadDocumentInput,
+} from "./document.schema.ts";
 
 export class DocumentService {
   async uploadDocument(
@@ -93,6 +96,49 @@ export class DocumentService {
     if (folder.ownerId !== userId) throw new Forbidden("Access Denied");
 
     return await documentRepository.findByFolderId(folderId);
+  }
+
+  async updateDocument(
+    documentId: string,
+    data: UpdateDocumentInput,
+    userId: string,
+  ) {
+    const document = await documentRepository.findById(documentId);
+
+    if (!document) throw new NotFound("Document not found");
+
+    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+
+    if (data.folderId) {
+      const folder = await folderRepository.findById(data.folderId);
+
+      if (!folder) throw new NotFound("Folder not found");
+
+      if (folder.ownerId !== userId) throw new Forbidden("Access Denied");
+    }
+
+    const updateData: {
+      name?: string;
+      folderId?: string | null;
+    } = {};
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.folderId !== undefined) updateData.folderId = data.folderId;
+
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequest("No update fields provided");
+    }
+
+    const updatedDocument = await documentRepository.updateById(
+      documentId,
+      updateData,
+    );
+
+    if (!updatedDocument) {
+      throw new AppError("Failed to update document", 500);
+    }
+
+    return updatedDocument;
   }
 }
 

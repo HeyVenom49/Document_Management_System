@@ -61,6 +61,25 @@ export class DocumentRepository {
       .from(documents)
       .where(eq(documents.folderId, folderId));
   }
+
+  async updateById(
+    id: string,
+    data: {
+      name?: string;
+      folderId?: string | null;
+    },
+  ) {
+    const [document] = await db
+      .update(documents)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, id))
+      .returning();
+
+    return document ?? null;
+  }
 }
 
 export const documentRepository = new DocumentRepository();

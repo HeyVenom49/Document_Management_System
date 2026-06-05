@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
-import { documentIdSchema, uploadDocumentSchema } from "./document.schema.ts";
+import {
+  documentIdSchema,
+  updateDocumentSchema,
+  uploadDocumentSchema,
+} from "./document.schema.ts";
 import { documentService } from "./document.service.ts";
 import { success } from "zod";
 
@@ -65,6 +69,23 @@ export class DocumentController {
     return res.status(200).json({
       success: true,
       data: documents,
+    });
+  }
+
+  async updateDocumet(req: Request<{ id: string }>, res: Response) {
+    const { id } = req.params;
+
+    const data = updateDocumentSchema.parse(req.body);
+
+    const document = await documentService.updateDocument(
+      id,
+      data,
+      req.user!.userId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: document,
     });
   }
 }
