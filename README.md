@@ -20,16 +20,17 @@ A backend API for a document management system built with Bun, Express, TypeScri
 - Document module:
   - Upload files with Multer.
   - Store uploaded files in Cloudinary.
-  - Persist document metadata in PostgreSQL.
+  - Persist document metadata in PostgreSQL, including Cloudinary resource type.
   - Optionally attach documents to folders.
   - Validate folder ownership before upload.
   - List documents owned by the authenticated user.
-  - Fetch a document by id.
+  - Fetch a document by id (owner only).
+  - Delete a document by id (owner only), removing the file from Cloudinary and the database record.
 - Shared middleware and utilities:
   - JWT generation and verification.
   - Auth middleware that attaches `req.user`.
   - File upload middleware.
-  - Cloudinary upload helper.
+  - Cloudinary upload and delete helpers.
   - Custom application errors for bad request, unauthorized, forbidden, and not found cases.
 
 ## Tech Stack
@@ -62,7 +63,7 @@ src/
     auth/                        # Register, login, current user
     users/                       # User repository/service groundwork
     folders/                     # Folder APIs
-    documents/                   # Document upload and lookup APIs
+    documents/                   # Document upload, lookup, and delete APIs
     documents-versions/          # Version module groundwork
     tags/                        # Tag module groundwork
     permisssions/                # Permission module groundwork
@@ -198,7 +199,8 @@ Create folder body:
 | ------ | ------------------- | ---- | ---------------------------------------- |
 | POST   | `/documents/upload` | Yes  | Upload a document file                   |
 | GET    | `/documents`        | Yes  | List documents owned by the current user |
-| GET    | `/documents/:id`    | Yes  | Get a document by id                     |
+| GET    | `/documents/:id`    | Yes  | Get a document by id (owner only)        |
+| DELETE | `/documents/:id`    | Yes  | Delete a document by id (owner only)     |
 
 Upload documents as `multipart/form-data`:
 
@@ -206,6 +208,19 @@ Upload documents as `multipart/form-data`:
 | -------- | -------------- | -------- | ----------------------------------- |
 | file     | File           | Yes      | File to upload                      |
 | folderId | String or null | No       | Folder id to attach the document to |
+
+`:id` must be a valid UUID.
+
+Delete response:
+
+```json
+{
+  "success": true,
+  "message": "Document deleted successfully"
+}
+```
+
+On delete, the API removes the file from Cloudinary using the stored resource type (with fallback for older records), then deletes the database row. If Cloudinary deletion fails, the database record is kept.
 
 Authenticated requests must include:
 
@@ -230,3 +245,4 @@ Authorization: Bearer <accessToken>
 - Tag, version, permission, share, and audit-related folders/files exist as groundwork, but their API routes are not currently mounted.
 - `documents-versions`, `tags`, `permisssions`, and `audit` modules should be completed and wired into `src/routes/index.ts` when their endpoints are ready.
 - The folder route is currently mounted as `/folder`.
+- After pulling schema changes, run `bun run db:migrate` (or `bun run db:push` locally) to apply new columns such as `cloudinary_resource_type` on documents.
