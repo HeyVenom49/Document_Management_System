@@ -43,6 +43,15 @@ export class DocumentRepository {
       .from(documents)
       .where(eq(documents.ownerId, ownerId));
   }
+
+  async deleteById(id: string) {
+    const [document] = await db
+      .delete(documents)
+      .where(eq(documents.id, id))
+      .returning();
+
+    return document ?? null;
+  }
 }
 
 export const documentRepository = new DocumentRepository();

@@ -24,4 +24,10 @@ router.get(
   documentController.getDocumentById.bind(documentController),
 );
 
+router.delete(
+  "/:id",
+  authMiddleware,
+  documentController.deleteDocument.bind(documentController),
+);
+
 export default router;

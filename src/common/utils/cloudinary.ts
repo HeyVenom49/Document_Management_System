@@ -1,8 +1,6 @@
 import type { UploadApiResponse } from "cloudinary";
 
-import cloudinary, {
-  cloudinaryCredentials,
-} from "../../config/cloudinary.ts";
+import cloudinary, { cloudinaryCredentials } from "../../config/cloudinary.ts";
 
 export const uploadToCloudinary = (
   buffer: Buffer,
@@ -15,5 +13,11 @@ export const uploadToCloudinary = (
     ...cloudinaryCredentials,
     folder,
     resource_type: "auto",
+  });
+};
+
+export const deleteFromCloudinary = (publicId: string) => {
+  return cloudinary.uploader.destroy(publicId, {
+    resource_type: "raw",
   });
 };

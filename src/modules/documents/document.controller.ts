@@ -38,6 +38,16 @@ export class DocumentController {
       data: document,
     });
   }
+
+  async deleteDocument(req: Request<{ id: string }>, res: Response) {
+    const { id } = req.params;
+    const result = await documentService.deleteDocument(id, req.user!.userId);
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  }
 }
 
 export const documentController = new DocumentController();

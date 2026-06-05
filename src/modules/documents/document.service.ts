@@ -1,7 +1,10 @@
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { Forbidden } from "../../common/errors/forbidden.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
-import { uploadToCloudinary } from "../../common/utils/cloudinary.ts";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "../../common/utils/cloudinary.ts";
 import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
 import type { UploadDocumentInput } from "./document.schema.ts";
@@ -28,10 +31,7 @@ export class DocumentService {
       }
     }
 
-    const uploadFile = await uploadToCloudinary(
-      file.buffer,
-      file.mimetype,
-    );
+    const uploadFile = await uploadToCloudinary(file.buffer, file.mimetype);
 
     const document = await documentRepository.create({
       name: file.originalname,
@@ -56,6 +56,22 @@ export class DocumentService {
     if (!document) throw new NotFound("Document not found");
 
     return document;
+  }
+
+  async deleteDocument(documentId: string, userId: string) {
+    const document = await documentRepository.findById(documentId);
+
+    if (!document) throw new NotFound("Document not found");
+
+    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+
+    await deleteFromCloudinary(document.cloudinaryPublicId);
+
+    await documentRepository.deleteById(documentId);
+
+    return {
+      message: "Document deleted successfully",
+    };
   }
 }
 
