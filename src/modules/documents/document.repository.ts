@@ -80,6 +80,16 @@ export class DocumentRepository {
 
     return document ?? null;
   }
+
+  async updateCurrentVersion(documentId: string, versionNumber: number) {
+    const [document] = await db
+      .update(documents)
+      .set({ currentVersion: versionNumber, updatedAt: new Date() })
+      .where(eq(documents.id, documentId))
+      .returning();
+
+    return document ?? null;
+  }
 }
 
 export const documentRepository = new DocumentRepository();

@@ -1,4 +1,11 @@
-import { bigint, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { users } from "./users.ts";
 import { folders } from "./folders.ts";
 
@@ -16,6 +23,7 @@ export const documents = pgTable("documents", {
   cloudinaryPublicId: text("cloudinary_public_id").notNull(),
   cloudinaryResourceType: text("cloudinary_resource_type"),
   fileUrl: text("file_url").notNull(),
+  currentVersion: integer("current_version").default(1).notNull(),
   mimeType: text("mime_type").notNull(),
   fileSize: bigint("file_size", {
     mode: "number",
