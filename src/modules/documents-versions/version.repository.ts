@@ -32,7 +32,7 @@ export class VersionRepository {
       .select()
       .from(documentVersions)
       .where(eq(documentVersions.documentId, documentId))
-      .orderBy(documentVersions.versionNumber)
+      .orderBy(desc(documentVersions.versionNumber))
       .limit(1);
     return version ?? null;
   }

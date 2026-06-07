@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../common/middleware/auth.middleware.ts";
 import { upload } from "../../common/middleware/upload.middleware.ts";
+import versionRoutes from "../documents-versions/version.routes.ts";
 import { documentController } from "./document.controller.ts";
 
 const router = Router();
@@ -19,15 +20,17 @@ router.get(
 );
 
 router.get(
-  "/:id",
-  authMiddleware,
-  documentController.getDocumentById.bind(documentController),
-);
-
-router.get(
   "/folder/:folderId",
   authMiddleware,
   documentController.getDocumentsByFolder.bind(documentController),
+);
+
+router.use("/:documentId/versions", versionRoutes);
+
+router.get(
+  "/:id",
+  authMiddleware,
+  documentController.getDocumentById.bind(documentController),
 );
 
 router.patch(

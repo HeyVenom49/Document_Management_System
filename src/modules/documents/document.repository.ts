@@ -90,6 +90,28 @@ export class DocumentRepository {
 
     return document ?? null;
   }
+
+  async updateVersionMetaData(
+    documentId: string,
+    data: {
+      currentVersion: number;
+      fileUrl: string;
+      cloudinaryPublicId: string;
+      mimeType: string;
+      fileSize: number;
+    },
+  ) {
+    const [document] = await db
+      .update(documents)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, documentId))
+      .returning();
+
+    return document;
+  }
 }
 
 export const documentRepository = new DocumentRepository();

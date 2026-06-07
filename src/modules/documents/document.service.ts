@@ -6,6 +6,7 @@ import {
   deleteFromCloudinary,
   uploadToCloudinary,
 } from "../../common/utils/cloudinary.ts";
+import { versionRepository } from "../documents-versions/version.repository.ts";
 import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
 import type {
@@ -48,6 +49,17 @@ export class DocumentService {
       fileSize: file.size,
     });
 
+    if (!document) throw new NotFound("Document not found");
+
+    await versionRepository.createVersion({
+      documentId: document.id,
+      versionNumber: 1,
+      cloudinaryPublicId: uploadFile.public_id,
+      fileUrl: uploadFile.secure_url,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+    });
+
     return document;
   }
 
@@ -72,10 +84,18 @@ export class DocumentService {
 
     if (document.ownerId !== userId) throw new Forbidden("Access Denied");
 
-    await deleteFromCloudinary(
+    const versions = await versionRepository.findByDocumentId(documentId);
+    const publicIds = new Set([
       document.cloudinaryPublicId,
-      document.cloudinaryResourceType,
-    );
+      ...versions.map((version) => version.cloudinaryPublicId),
+    ]);
+
+    for (const publicId of publicIds) {
+      await deleteFromCloudinary(
+        publicId,
+        document.cloudinaryResourceType,
+      );
+    }
 
     const deleted = await documentRepository.deleteById(documentId);
 
