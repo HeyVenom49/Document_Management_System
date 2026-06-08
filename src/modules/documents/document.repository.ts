@@ -1,4 +1,4 @@
-import { and, eq, ilike, count } from "drizzle-orm";
+import { and, count, desc, eq, ilike } from "drizzle-orm";
 import { db } from "../../database/index.ts";
 import { documents } from "../../database/schema/documents.ts";
 
@@ -81,16 +81,6 @@ export class DocumentRepository {
     return document ?? null;
   }
 
-  async updateCurrentVersion(documentId: string, versionNumber: number) {
-    const [document] = await db
-      .update(documents)
-      .set({ currentVersion: versionNumber, updatedAt: new Date() })
-      .where(eq(documents.id, documentId))
-      .returning();
-
-    return document ?? null;
-  }
-
   async updateVersionMetaData(
     documentId: string,
     data: {
@@ -126,6 +116,7 @@ export class DocumentRepository {
       .select()
       .from(documents)
       .where(and(...filters))
+      .orderBy(desc(documents.createdAt))
       .limit(limit)
       .offset(offset);
   }

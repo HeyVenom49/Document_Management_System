@@ -17,6 +17,10 @@ export const getDocumentSchema = z.object({
 
 export const documentIdSchema = z.uuid("Invalid document id");
 
+export const folderIdParamSchema = z.object({
+  folderId: z.uuid("Invalid folder id"),
+});
+
 export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
 export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>;
 export type GetDocumentInput = z.infer<typeof getDocumentSchema>;

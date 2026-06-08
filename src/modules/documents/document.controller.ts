@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
 import {
   documentIdSchema,
+  folderIdParamSchema,
   getDocumentSchema,
   updateDocumentSchema,
   uploadDocumentSchema,
 } from "./document.schema.ts";
 import { documentService } from "./document.service.ts";
-import { success } from "zod";
 
 export class DocumentController {
   async uploadDocument(req: Request, res: Response) {
@@ -27,7 +27,7 @@ export class DocumentController {
   async getDocuments(req: Request, res: Response) {
     const document = await documentService.getDocuments(req.user!.userId);
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
       data: document,
     });
@@ -40,7 +40,7 @@ export class DocumentController {
       req.user!.userId,
     );
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
       data: document,
     });
@@ -60,7 +60,7 @@ export class DocumentController {
     req: Request<{ folderId: string }>,
     res: Response,
   ) {
-    const { folderId } = req.params;
+    const { folderId } = folderIdParamSchema.parse(req.params);
 
     const documents = await documentService.getDocumentsByFolder(
       folderId,
@@ -73,9 +73,8 @@ export class DocumentController {
     });
   }
 
-  async updateDocumet(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
+  async updateDocument(req: Request<{ id: string }>, res: Response) {
+    const id = documentIdSchema.parse(req.params.id);
     const data = updateDocumentSchema.parse(req.body);
 
     const document = await documentService.updateDocument(

@@ -37,7 +37,12 @@ const findVersionById = mock(async () => ({
   versionNumber: 2,
 }));
 
-const updateVersionMetaData = mock(async () => ({}));
+const updateVersionMetaData = mock(async () => ({
+  id: documentId,
+  name: "contract.pdf",
+  ownerId: "user-1",
+  currentVersion: 1,
+}));
 
 const uploadToCloudinary = mock(async () => ({
   public_id: "dms/new-file",
@@ -107,6 +112,13 @@ describe("version endpoints", () => {
       documentId,
       versionNumber: 2,
     }));
+
+    updateVersionMetaData.mockImplementation(async () => ({
+      id: documentId,
+      name: "contract.pdf",
+      ownerId: "user-1",
+      currentVersion: 1,
+    }));
   });
 
   it("POST /documents/:documentId/versions uploads a new version", async () => {
@@ -171,5 +183,40 @@ describe("version endpoints", () => {
       data: { id: versionId, versionNumber: 2 },
     });
     expect(findVersionById).toHaveBeenCalledWith(versionId);
+  });
+
+  it("POST /documents/:documentId/versions/:versionId/restore restores a version", async () => {
+    findVersionById.mockImplementation(async () => ({
+      id: versionId,
+      documentId,
+      versionNumber: 1,
+      fileUrl: "https://res.cloudinary.com/example/v1.pdf",
+      cloudinaryPublicId: "dms/v1",
+      mimeType: "application/pdf",
+      fileSize: 100,
+    }));
+
+    const response = createResponse();
+
+    await versionController.restoreVersion(
+      {
+        params: { documentId, versionId },
+        user: { userId: "user-1" },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: { id: documentId, currentVersion: 1 },
+    });
+    expect(updateVersionMetaData).toHaveBeenCalledWith(documentId, {
+      currentVersion: 1,
+      fileUrl: "https://res.cloudinary.com/example/v1.pdf",
+      cloudinaryPublicId: "dms/v1",
+      mimeType: "application/pdf",
+      fileSize: 100,
+    });
   });
 });

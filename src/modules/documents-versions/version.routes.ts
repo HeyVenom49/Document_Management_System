@@ -18,16 +18,16 @@ router.get(
   versionController.getVersions.bind(versionController),
 );
 
+router.post(
+  "/:versionId/restore",
+  authMiddleware,
+  versionController.restoreVersion.bind(versionController),
+);
+
 router.get(
   "/:versionId",
   authMiddleware,
   versionController.getVersionById.bind(versionController),
-);
-
-router.get(
-  "/:id/version/:versionId/restore",
-  authMiddleware,
-  versionController.restoreVersion.bind(versionController),
 );
 
 export default router;

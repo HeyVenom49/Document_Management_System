@@ -60,7 +60,7 @@ describe("folder endpoints", () => {
       response as never,
     );
 
-    expect(response.status).toHaveBeenCalledWith(201);
+    expect(response.status).toHaveBeenCalledWith(200);
     expect(response.body).toMatchObject({
       success: true,
       data: [{ id: "folder-1", name: "Contracts" }],

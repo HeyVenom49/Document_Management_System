@@ -11,6 +11,7 @@ export async function authMiddleware(
 
     if (!authHeader?.startsWith("Bearer "))
       return res.status(401).json({
+        success: false,
         message: "Unauthorized",
       });
 
@@ -25,6 +26,7 @@ export async function authMiddleware(
     next();
   } catch (err) {
     return res.status(401).json({
+      success: false,
       message: "Invalid token",
     });
   }

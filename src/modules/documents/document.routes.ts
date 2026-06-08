@@ -20,6 +20,12 @@ router.get(
 );
 
 router.get(
+  "/search",
+  authMiddleware,
+  documentController.searchDocuments.bind(documentController),
+);
+
+router.get(
   "/folder/:folderId",
   authMiddleware,
   documentController.getDocumentsByFolder.bind(documentController),
@@ -36,19 +42,13 @@ router.get(
 router.patch(
   "/:id",
   authMiddleware,
-  documentController.updateDocumet.bind(documentController),
+  documentController.updateDocument.bind(documentController),
 );
 
 router.delete(
   "/:id",
   authMiddleware,
   documentController.deleteDocument.bind(documentController),
-);
-
-router.post(
-  "/search",
-  authMiddleware,
-  documentController.searchDocuments.bind(documentController),
 );
 
 export default router;

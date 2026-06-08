@@ -43,6 +43,22 @@ const getDocumentsByFolder = mock(async () => [
   },
 ]);
 
+const searchDocuments = mock(async () => ({
+  documents: [
+    {
+      id: documentId,
+      name: "contract.pdf",
+      ownerId: "user-1",
+    },
+  ],
+  pagination: {
+    page: 1,
+    limit: 10,
+    total: 1,
+    totalPages: 1,
+  },
+}));
+
 mock.module("../../src/modules/documents/document.service.ts", () => ({
   documentService: {
     uploadDocument,
@@ -51,6 +67,7 @@ mock.module("../../src/modules/documents/document.service.ts", () => ({
     deleteDocument,
     updateDocument,
     getDocumentsByFolder,
+    searchDocuments,
   },
 }));
 
@@ -66,6 +83,7 @@ describe("document endpoints", () => {
     deleteDocument.mockClear();
     updateDocument.mockClear();
     getDocumentsByFolder.mockClear();
+    searchDocuments.mockClear();
   });
 
   it("POST /documents/upload uploads a document for the authenticated user", async () => {
@@ -104,7 +122,7 @@ describe("document endpoints", () => {
       response as never,
     );
 
-    expect(response.status).toHaveBeenCalledWith(201);
+    expect(response.status).toHaveBeenCalledWith(200);
     expect(response.body).toMatchObject({
       success: true,
       data: [{ id: documentId, name: "contract.pdf" }],
@@ -123,7 +141,7 @@ describe("document endpoints", () => {
       response as never,
     );
 
-    expect(response.status).toHaveBeenCalledWith(201);
+    expect(response.status).toHaveBeenCalledWith(200);
     expect(response.body).toMatchObject({
       success: true,
       data: { id: documentId },
@@ -153,7 +171,7 @@ describe("document endpoints", () => {
   it("PATCH /documents/:id updates document metadata", async () => {
     const response = createResponse();
 
-    await documentController.updateDocumet(
+    await documentController.updateDocument(
       {
         params: { id: documentId },
         body: { name: "Updated contract.pdf" },
@@ -191,5 +209,29 @@ describe("document endpoints", () => {
       data: [{ id: documentId, folderId }],
     });
     expect(getDocumentsByFolder).toHaveBeenCalledWith(folderId, "user-1");
+  });
+
+  it("GET /documents/search returns paginated search results", async () => {
+    const response = createResponse();
+
+    await documentController.searchDocuments(
+      {
+        query: { search: "contract", page: "1", limit: "10" },
+        user: { userId: "user-1" },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: [{ id: documentId, name: "contract.pdf" }],
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+    expect(searchDocuments).toHaveBeenCalledWith("user-1", {
+      search: "contract",
+      page: 1,
+      limit: 10,
+    });
   });
 });

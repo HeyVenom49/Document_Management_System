@@ -28,14 +28,27 @@ const uploadToCloudinary = mock(async () => ({
   secure_url: "https://res.cloudinary.com/example/new-file.pdf",
 }));
 
-const updateVersionMetaData = mock(async () => ({}));
+const updateVersionMetaData = mock(async () => ({
+  id: documentId,
+  currentVersion: 2,
+}));
 
 mock.module("../../src/modules/documents/document.repository.ts", () => ({
   documentRepository: { findById, updateVersionMetaData },
 }));
 
+const findVersionById = mock(async () => ({
+  id: "version-1",
+  documentId,
+  versionNumber: 1,
+  fileUrl: "https://res.cloudinary.com/example/v1.pdf",
+  cloudinaryPublicId: "dms/v1",
+  mimeType: "application/pdf",
+  fileSize: 100,
+}));
+
 mock.module("../../src/modules/documents-versions/version.repository.ts", () => ({
-  versionRepository: { findLatestVersion, createVersion },
+  versionRepository: { findLatestVersion, createVersion, findVersionById },
 }));
 
 mock.module("../../src/common/utils/cloudinary.ts", () => ({
@@ -60,6 +73,7 @@ describe("version service", () => {
     createVersion.mockClear();
     uploadToCloudinary.mockClear();
     updateVersionMetaData.mockClear();
+    findVersionById.mockClear();
 
     findById.mockImplementation(async () => ({
       id: documentId,
@@ -138,5 +152,27 @@ describe("version service", () => {
     expect(createVersion).toHaveBeenCalledWith(
       expect.objectContaining({ versionNumber: 1 }),
     );
+  });
+
+  it("restoreVersion updates document metadata to the selected version", async () => {
+    updateVersionMetaData.mockImplementation(async () => ({
+      id: documentId,
+      currentVersion: 1,
+    }));
+
+    const document = await versionService.restoreVersion(
+      documentId,
+      "version-1",
+      "user-1",
+    );
+
+    expect(updateVersionMetaData).toHaveBeenCalledWith(documentId, {
+      currentVersion: 1,
+      fileUrl: "https://res.cloudinary.com/example/v1.pdf",
+      cloudinaryPublicId: "dms/v1",
+      mimeType: "application/pdf",
+      fileSize: 100,
+    });
+    expect(document).toMatchObject({ id: documentId, currentVersion: 1 });
   });
 });

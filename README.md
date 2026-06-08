@@ -12,11 +12,12 @@ A Bun + Express backend API for managing users, folders, and uploaded documents.
 - Ownership checks before using parent folders or folder-scoped document operations.
 - Document upload through `multipart/form-data`.
 - Cloudinary-backed document storage with persisted metadata.
-- Document listing, lookup, update, folder filtering, and deletion.
-- Cloudinary cleanup when deleting documents.
+- Document listing, lookup, update, folder filtering, search, and deletion.
+- Document version upload, listing, lookup, and restore.
+- Cloudinary cleanup when deleting documents and all stored versions.
 - Centralized validation, error handling, and custom application errors.
 - PostgreSQL schema and migrations managed with Drizzle Kit.
-- Controller tests for auth, folder, and document flows.
+- Controller tests for auth, folder, document, and version flows.
 
 ## Tech Stack
 
@@ -49,8 +50,8 @@ src/
     auth/                        # Register, login, and current-user APIs
     users/                       # User repository groundwork
     folders/                     # Folder APIs
-    documents/                   # Document upload, lookup, update, and delete APIs
-    documents-versions/          # Version module groundwork
+    documents/                   # Document upload, lookup, update, search, and delete APIs
+    documents-versions/          # Document version upload, list, lookup, and restore APIs
 
 test/
   helpers/                       # Shared test utilities
@@ -207,8 +208,9 @@ Create folder body:
 | ------ | ------------------------------ | ---- | ---------------------------------------- |
 | POST   | `/documents/upload`            | Yes  | Upload a document file                   |
 | GET    | `/documents`                   | Yes  | List documents owned by the current user |
-| GET    | `/documents/:id`               | Yes  | Get a document by id                     |
+| GET    | `/documents/search`            | Yes  | Search documents with pagination         |
 | GET    | `/documents/folder/:folderId`  | Yes  | List documents in a folder               |
+| GET    | `/documents/:id`               | Yes  | Get a document by id                     |
 | PATCH  | `/documents/:id`               | Yes  | Update document metadata                 |
 | DELETE | `/documents/:id`               | Yes  | Delete a document                        |
 
@@ -236,6 +238,48 @@ Delete response:
 {
   "success": true,
   "message": "Document deleted successfully"
+}
+```
+
+Search query parameters:
+
+| Param  | Type   | Required | Description                    |
+| ------ | ------ | -------- | ------------------------------ |
+| search | String | No       | Filter documents by name       |
+| page   | Number | No       | Page number, defaults to `1`   |
+| limit  | Number | No       | Page size, defaults to `10`    |
+
+Example:
+
+```http
+GET /documents/search?search=contract&page=1&limit=10
+```
+
+### Document Versions
+
+| Method | Endpoint                                              | Auth | Description                    |
+| ------ | ----------------------------------------------------- | ---- | ------------------------------ |
+| POST   | `/documents/:documentId/versions`                     | Yes  | Upload a new document version    |
+| GET    | `/documents/:documentId/versions`                     | Yes  | List all versions              |
+| GET    | `/documents/:documentId/versions/:versionId`          | Yes  | Get one version                |
+| POST   | `/documents/:documentId/versions/:versionId/restore`  | Yes  | Restore document to a version  |
+
+Upload a version as `multipart/form-data`:
+
+| Field | Type | Required | Description      |
+| ----- | ---- | -------- | ---------------- |
+| file  | File | Yes      | New file version |
+
+Restore response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "document-uuid",
+    "currentVersion": 1,
+    "fileUrl": "https://res.cloudinary.com/..."
+  }
 }
 ```
 

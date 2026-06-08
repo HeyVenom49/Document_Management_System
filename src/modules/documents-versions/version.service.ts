@@ -1,3 +1,4 @@
+import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { Forbidden } from "../../common/errors/forbidden.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
 import { uploadToCloudinary } from "../../common/utils/cloudinary.ts";
@@ -14,9 +15,11 @@ export class VersionService {
 
   async uploadVersion(
     documentId: string,
-    file: Express.Multer.File,
+    file: Express.Multer.File | undefined,
     userId: string,
   ) {
+    if (!file) throw new BadRequest("File is required");
+
     await this.assertDocumentOwner(documentId, userId);
 
     const latest = await versionRepository.findLatestVersion(documentId);
@@ -68,17 +71,13 @@ export class VersionService {
     if (!version || version.documentId !== documentId)
       throw new NotFound("Version not found");
 
-    await documentRepository.updateVersionMetaData(documentId, {
+    return await documentRepository.updateVersionMetaData(documentId, {
       currentVersion: version.versionNumber,
       fileUrl: version.fileUrl,
       cloudinaryPublicId: version.cloudinaryPublicId,
       fileSize: version.fileSize,
       mimeType: version.mimeType,
     });
-
-    const updateDocument = await documentRepository.findById(documentId);
-
-    return updateDocument;
   }
 }
 

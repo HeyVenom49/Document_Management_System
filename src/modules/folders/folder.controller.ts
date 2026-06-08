@@ -17,7 +17,7 @@ export class FolderController {
   async getFolder(req: Request, res: Response) {
     const folder = await folderService.getFolder(req.user!.userId);
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
       data: folder,
     });
