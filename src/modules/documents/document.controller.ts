@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import {
   documentIdSchema,
+  getDocumentSchema,
   updateDocumentSchema,
   uploadDocumentSchema,
 } from "./document.schema.ts";
@@ -86,6 +87,21 @@ export class DocumentController {
     return res.status(200).json({
       success: true,
       data: document,
+    });
+  }
+
+  async searchDocuments(req: Request, res: Response) {
+    const query = getDocumentSchema.parse(req.query);
+
+    const result = await documentService.searchDocuments(
+      req.user!.userId,
+      query,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.documents,
+      pagination: result.pagination,
     });
   }
 }

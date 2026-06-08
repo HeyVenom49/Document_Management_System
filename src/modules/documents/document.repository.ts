@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ilike, count } from "drizzle-orm";
 import { db } from "../../database/index.ts";
 import { documents } from "../../database/schema/documents.ts";
 
@@ -111,6 +111,39 @@ export class DocumentRepository {
       .returning();
 
     return document;
+  }
+
+  async findDocuments(ownerId: string, search?: string, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    const filters = [eq(documents.ownerId, ownerId)];
+
+    if (search) {
+      filters.push(ilike(documents.name, `%${search}%`));
+    }
+
+    return await db
+      .select()
+      .from(documents)
+      .where(and(...filters))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async countDocuments(ownerId: string, search?: string) {
+    const filters = [eq(documents.ownerId, ownerId)];
+
+    if (search) {
+      filters.push(ilike(documents.name, `%${search}%`));
+    }
+    const [result] = await db
+      .select({
+        total: count(),
+      })
+      .from(documents)
+      .where(and(...filters));
+
+    return result?.total ?? 0;
   }
 }
 

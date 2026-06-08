@@ -45,4 +45,10 @@ router.delete(
   documentController.deleteDocument.bind(documentController),
 );
 
+router.post(
+  "/search",
+  authMiddleware,
+  documentController.searchDocuments.bind(documentController),
+);
+
 export default router;

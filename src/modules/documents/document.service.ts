@@ -10,6 +10,7 @@ import { versionRepository } from "../documents-versions/version.repository.ts";
 import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
 import type {
+  GetDocumentInput,
   UpdateDocumentInput,
   UploadDocumentInput,
 } from "./document.schema.ts";
@@ -91,10 +92,7 @@ export class DocumentService {
     ]);
 
     for (const publicId of publicIds) {
-      await deleteFromCloudinary(
-        publicId,
-        document.cloudinaryResourceType,
-      );
+      await deleteFromCloudinary(publicId, document.cloudinaryResourceType);
     }
 
     const deleted = await documentRepository.deleteById(documentId);
@@ -159,6 +157,28 @@ export class DocumentService {
     }
 
     return updatedDocument;
+  }
+
+  async searchDocuments(userId: string, query: GetDocumentInput) {
+    const { search, page, limit } = query;
+    const documents = await documentRepository.findDocuments(
+      userId,
+      search,
+      page,
+      limit,
+    );
+
+    const total = await documentRepository.countDocuments(userId, search);
+
+    return {
+      documents,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
 
