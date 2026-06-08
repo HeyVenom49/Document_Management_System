@@ -24,4 +24,10 @@ router.get(
   versionController.getVersionById.bind(versionController),
 );
 
+router.get(
+  "/:id/version/:versionId/restore",
+  authMiddleware,
+  versionController.restoreVersion.bind(versionController),
+);
+
 export default router;

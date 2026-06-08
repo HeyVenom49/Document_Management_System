@@ -59,6 +59,27 @@ export class VersionService {
 
     return version;
   }
+
+  async restoreVersion(documentId: string, versionId: string, userId: string) {
+    await this.assertDocumentOwner(documentId, userId);
+
+    const version = await versionRepository.findVersionById(versionId);
+
+    if (!version || version.documentId !== documentId)
+      throw new NotFound("Version not found");
+
+    await documentRepository.updateVersionMetaData(documentId, {
+      currentVersion: version.versionNumber,
+      fileUrl: version.fileUrl,
+      cloudinaryPublicId: version.cloudinaryPublicId,
+      fileSize: version.fileSize,
+      mimeType: version.mimeType,
+    });
+
+    const updateDocument = await documentRepository.findById(documentId);
+
+    return updateDocument;
+  }
 }
 
 export const versionService = new VersionService();
