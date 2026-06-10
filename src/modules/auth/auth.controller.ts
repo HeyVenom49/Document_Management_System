@@ -3,12 +3,15 @@ import {
   loginSchema,
   refreshTokenSchema,
   registerSchema,
+  type LoginInput,
+  type RefreshTokenInput,
+  type RegisterInput,
 } from "./auth.schema.ts";
 import { authService } from "./auth.service.ts";
 
 export class AuthController {
   async register(req: Request, res: Response) {
-    const data = registerSchema.parse(req.body);
+    const data: RegisterInput = registerSchema.parse(req.body);
 
     const user = await authService.register(data);
 
@@ -19,7 +22,7 @@ export class AuthController {
   }
 
   async login(req: Request, res: Response) {
-    const data = loginSchema.parse(req.body);
+    const data: LoginInput = loginSchema.parse(req.body);
 
     const user = await authService.login(data);
 
@@ -39,7 +42,8 @@ export class AuthController {
   }
 
   async refreshToken(req: Request, res: Response) {
-    const { refreshToken } = refreshTokenSchema.parse(req.body);
+    const { refreshToken }: RefreshTokenInput =
+      refreshTokenSchema.parse(req.body);
 
     const token = await authService.refreshAccessToken(refreshToken);
 

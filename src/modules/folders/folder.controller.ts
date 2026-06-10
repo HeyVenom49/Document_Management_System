@@ -1,10 +1,13 @@
 import type { Request, Response } from "express";
-import { createFolderSchema } from "./folder.schema.ts";
+import {
+  createFolderSchema,
+  type CreateFolderInput,
+} from "./folder.schema.ts";
 import { folderService } from "./folder.service.ts";
 
 export class FolderController {
   async createFolder(req: Request, res: Response) {
-    const data = createFolderSchema.parse(req.body);
+    const data: CreateFolderInput = createFolderSchema.parse(req.body);
 
     const user = await folderService.createFolder(data, req.user!.userId);
 

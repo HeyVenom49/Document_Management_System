@@ -24,3 +24,5 @@ export const folderIdParamSchema = z.object({
 export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
 export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>;
 export type GetDocumentInput = z.infer<typeof getDocumentSchema>;
+export type DocumentIdInput = z.infer<typeof documentIdSchema>;
+export type FolderIdParamInput = z.infer<typeof folderIdParamSchema>;

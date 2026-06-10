@@ -93,5 +93,7 @@ export class AuthService {
 
     return { accessToken };
   }
+
+  async logout() {}
 }
 export const authService = new AuthService();

@@ -2,12 +2,16 @@ import type { Request, Response } from "express";
 import {
   documentIdParamSchema,
   versionIdParamSchema,
+  type DocumentIdParamInput,
+  type VersionIdParamInput,
 } from "./version.schema.ts";
 import { versionService } from "./version.service.ts";
 
 export class VersionController {
   async uploadVersion(req: Request, res: Response) {
-    const { documentId } = documentIdParamSchema.parse(req.params);
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
 
     const version = await versionService.uploadVersion(
       documentId,
@@ -22,7 +26,9 @@ export class VersionController {
   }
 
   async getVersions(req: Request, res: Response) {
-    const { documentId } = documentIdParamSchema.parse(req.params);
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
 
     const versions = await versionService.getVersions(
       documentId,
@@ -36,7 +42,8 @@ export class VersionController {
   }
 
   async getVersionById(req: Request, res: Response) {
-    const { documentId, versionId } = versionIdParamSchema.parse(req.params);
+    const { documentId, versionId }: VersionIdParamInput =
+      versionIdParamSchema.parse(req.params);
 
     const version = await versionService.getVersionById(
       documentId,
@@ -51,7 +58,8 @@ export class VersionController {
   }
 
   async restoreVersion(req: Request, res: Response) {
-    const { documentId, versionId } = versionIdParamSchema.parse(req.params);
+    const { documentId, versionId }: VersionIdParamInput =
+      versionIdParamSchema.parse(req.params);
 
     const document = await versionService.restoreVersion(
       documentId,

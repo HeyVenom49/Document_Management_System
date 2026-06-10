@@ -5,12 +5,17 @@ import {
   getDocumentSchema,
   updateDocumentSchema,
   uploadDocumentSchema,
+  type DocumentIdInput,
+  type FolderIdParamInput,
+  type GetDocumentInput,
+  type UpdateDocumentInput,
+  type UploadDocumentInput,
 } from "./document.schema.ts";
 import { documentService } from "./document.service.ts";
 
 export class DocumentController {
   async uploadDocument(req: Request, res: Response) {
-    const data = uploadDocumentSchema.parse(req.body);
+    const data: UploadDocumentInput = uploadDocumentSchema.parse(req.body);
 
     const document = await documentService.uploadDocument(
       data,
@@ -34,7 +39,7 @@ export class DocumentController {
   }
 
   async getDocumentById(req: Request<{ id: string }>, res: Response) {
-    const id = documentIdSchema.parse(req.params.id);
+    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
     const document = await documentService.getDocumentById(
       id,
       req.user!.userId,
@@ -47,7 +52,7 @@ export class DocumentController {
   }
 
   async deleteDocument(req: Request<{ id: string }>, res: Response) {
-    const id = documentIdSchema.parse(req.params.id);
+    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
     const result = await documentService.deleteDocument(id, req.user!.userId);
 
     return res.status(200).json({
@@ -60,7 +65,9 @@ export class DocumentController {
     req: Request<{ folderId: string }>,
     res: Response,
   ) {
-    const { folderId } = folderIdParamSchema.parse(req.params);
+    const { folderId }: FolderIdParamInput = folderIdParamSchema.parse(
+      req.params,
+    );
 
     const documents = await documentService.getDocumentsByFolder(
       folderId,
@@ -74,8 +81,8 @@ export class DocumentController {
   }
 
   async updateDocument(req: Request<{ id: string }>, res: Response) {
-    const id = documentIdSchema.parse(req.params.id);
-    const data = updateDocumentSchema.parse(req.body);
+    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
+    const data: UpdateDocumentInput = updateDocumentSchema.parse(req.body);
 
     const document = await documentService.updateDocument(
       id,
@@ -90,7 +97,7 @@ export class DocumentController {
   }
 
   async searchDocuments(req: Request, res: Response) {
-    const query = getDocumentSchema.parse(req.query);
+    const query: GetDocumentInput = getDocumentSchema.parse(req.query);
 
     const result = await documentService.searchDocuments(
       req.user!.userId,
