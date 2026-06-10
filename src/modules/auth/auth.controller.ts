@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
-import { loginSchema, registerSchema } from "./auth.schema.ts";
+import {
+  loginSchema,
+  refreshTokenSchema,
+  registerSchema,
+} from "./auth.schema.ts";
 import { authService } from "./auth.service.ts";
 
 export class AuthController {
@@ -31,6 +35,17 @@ export class AuthController {
     return res.status(200).json({
       success: true,
       data: user,
+    });
+  }
+
+  async refreshToken(req: Request, res: Response) {
+    const { refreshToken } = refreshTokenSchema.parse(req.body);
+
+    const token = await authService.refreshAccessToken(refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      data: token,
     });
   }
 }

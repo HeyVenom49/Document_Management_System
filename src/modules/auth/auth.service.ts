@@ -74,5 +74,24 @@ export class AuthService {
       email: user.email,
     };
   }
+
+  async refreshAccessToken(refreshToken: string) {
+    const storedToken = await refreshTokenRepository.findByToken(refreshToken);
+
+    if (!storedToken) throw new Unauthorized("Invalid refresh token");
+
+    if (storedToken.expireAt < new Date())
+      throw new Unauthorized("Refresh token expired");
+
+    const user = await userRepository.findById(storedToken.userId);
+
+    if (!user) throw new NotFound("Couldn't find the user");
+
+    const accessToken = generateAccessToken({
+      userId: user.id,
+    });
+
+    return { accessToken };
+  }
 }
 export const authService = new AuthService();
