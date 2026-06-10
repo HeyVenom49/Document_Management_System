@@ -1,9 +1,11 @@
 import type { Request, Response } from "express";
 import {
   loginSchema,
+  logoutSchema,
   refreshTokenSchema,
   registerSchema,
   type LoginInput,
+  type LogoutInput,
   type RefreshTokenInput,
   type RegisterInput,
 } from "./auth.schema.ts";
@@ -42,14 +44,26 @@ export class AuthController {
   }
 
   async refreshToken(req: Request, res: Response) {
-    const { refreshToken }: RefreshTokenInput =
-      refreshTokenSchema.parse(req.body);
+    const { refreshToken }: RefreshTokenInput = refreshTokenSchema.parse(
+      req.body,
+    );
 
     const token = await authService.refreshAccessToken(refreshToken);
 
     return res.status(200).json({
       success: true,
       data: token,
+    });
+  }
+
+  async logout(req: Request, res: Response) {
+    const { refreshToken }: LogoutInput = logoutSchema.parse(req.body);
+
+    const result = await authService.logout(refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      ...result,
     });
   }
 }

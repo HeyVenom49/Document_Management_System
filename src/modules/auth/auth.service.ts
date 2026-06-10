@@ -94,6 +94,14 @@ export class AuthService {
     return { accessToken };
   }
 
-  async logout() {}
+  async logout(refreshToken: string) {
+    const token = await refreshTokenRepository.findByToken(refreshToken);
+
+    if (!token) throw new Unauthorized("Invalid refresh token");
+
+    await refreshTokenRepository.deleteByToken(refreshToken);
+
+    return { message: "Logged out successfully" };
+  }
 }
 export const authService = new AuthService();

@@ -12,5 +12,9 @@ router.post(
   authMiddleware,
   authController.refreshToken.bind(authController),
 );
-
+router.post(
+  "/logout",
+  authMiddleware,
+  authController.logout.bind(authController),
+);
 export default router;
