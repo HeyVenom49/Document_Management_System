@@ -1,7 +1,7 @@
 import { pgTable, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users.ts";
 
-export const refreshToken = pgTable("refresh_token", {
+export const refreshTokens = pgTable("refresh_token", {
   id: uuid("id").defaultRandom().primaryKey(),
   token: uuid("token").defaultRandom().notNull().unique(),
   userId: uuid("user_id")

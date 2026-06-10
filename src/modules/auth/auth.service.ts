@@ -5,6 +5,7 @@ import { Unauthorized } from "../../common/errors/unauthorized.error.ts";
 import { generateAccessToken } from "../../common/utils/jwt.ts";
 import { userRepository } from "../users/user.repository.ts";
 import type { LoginInput, RegisterInput } from "./auth.schema.ts";
+import { refreshTokenRepository } from "./refresh-token.repository.ts";
 
 export class AuthService {
   async register(data: RegisterInput) {
@@ -48,9 +49,15 @@ export class AuthService {
       userId: user.id,
     });
 
+    const refreshToken = await refreshTokenRepository.create(
+      user.id,
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    );
+
     return {
       id: user.id,
       accessToken,
+      refreshToken,
     };
   }
 
