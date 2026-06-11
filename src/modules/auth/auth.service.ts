@@ -87,11 +87,18 @@ export class AuthService {
 
     if (!user) throw new NotFound("Couldn't find the user");
 
+    await refreshTokenRepository.deleteByToken(refreshToken);
+
+    const newRefreshToken = await refreshTokenRepository.create(
+      user.id,
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    );
+
     const accessToken = generateAccessToken({
       userId: user.id,
     });
 
-    return { accessToken };
+    return { accessToken, newRefreshToken };
   }
 
   async logout(refreshToken: string) {

@@ -11,6 +11,7 @@ const register = mock(async () => ({
 const login = mock(async () => ({
   id: "user-1",
   accessToken: "access-token",
+  refreshToken: "550e8400-e29b-41d4-a716-446655440000",
 }));
 
 const me = mock(async () => ({
@@ -19,8 +20,17 @@ const me = mock(async () => ({
   email: "venom@example.com",
 }));
 
+const refreshAccessToken = mock(async () => ({
+  accessToken: "new-access-token",
+  newRefreshToken: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+}));
+
+const logout = mock(async () => ({
+  message: "Logged out successfully",
+}));
+
 mock.module("../../src/modules/auth/auth.service.ts", () => ({
-  authService: { register, login, me },
+  authService: { register, login, me, refreshAccessToken, logout },
 }));
 
 const { authController } = await import(
@@ -32,6 +42,8 @@ describe("auth endpoints", () => {
     register.mockClear();
     login.mockClear();
     me.mockClear();
+    refreshAccessToken.mockClear();
+    logout.mockClear();
   });
 
   it("POST /auth/register returns the registered user", async () => {
@@ -60,7 +72,7 @@ describe("auth endpoints", () => {
     });
   });
 
-  it("POST /auth/login returns an access token", async () => {
+  it("POST /auth/login returns access and refresh tokens", async () => {
     const response = createResponse();
 
     await authController.login(
@@ -79,6 +91,7 @@ describe("auth endpoints", () => {
       data: {
         id: "user-1",
         accessToken: "access-token",
+        refreshToken: "550e8400-e29b-41d4-a716-446655440000",
       },
     });
     expect(login).toHaveBeenCalledWith({
@@ -107,5 +120,52 @@ describe("auth endpoints", () => {
       },
     });
     expect(me).toHaveBeenCalledWith("user-1");
+  });
+
+  it("POST /auth/refresh returns a new access token and refresh token", async () => {
+    const response = createResponse();
+
+    await authController.refreshToken(
+      {
+        body: {
+          refreshToken: "550e8400-e29b-41d4-a716-446655440000",
+        },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toEqual({
+      success: true,
+      data: {
+        accessToken: "new-access-token",
+        newRefreshToken: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      },
+    });
+    expect(refreshAccessToken).toHaveBeenCalledWith(
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+  });
+
+  it("POST /auth/logout revokes the refresh token", async () => {
+    const response = createResponse();
+
+    await authController.logout(
+      {
+        body: {
+          refreshToken: "550e8400-e29b-41d4-a716-446655440000",
+        },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toEqual({
+      success: true,
+      message: "Logged out successfully",
+    });
+    expect(logout).toHaveBeenCalledWith(
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
   });
 });

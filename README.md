@@ -4,7 +4,9 @@ A Bun + Express backend API for managing users, folders, and uploaded documents.
 
 ## Features
 
-- User authentication with registration, login, JWT access tokens, and current-user profile lookup.
+- User authentication with registration, login, JWT access tokens, refresh tokens, and current-user profile lookup.
+- Refresh token rotation with server-side storage and 30-day expiration.
+- Logout that invalidates the current refresh token.
 - Password hashing with Argon2.
 - Protected routes through Bearer token authentication.
 - Folder management for authenticated users.
@@ -47,7 +49,7 @@ src/
     middleware/                  # Auth, validation, upload, and error middleware
     utils/                       # JWT and Cloudinary helpers
   modules/
-    auth/                        # Register, login, and current-user APIs
+    auth/                        # Register, login, refresh, logout, and current-user APIs
     users/                       # User repository groundwork
     folders/                     # Folder APIs
     documents/                   # Document upload, lookup, update, search, and delete APIs
@@ -58,6 +60,7 @@ test/
   auth/                          # Auth controller tests
   folders/                       # Folder controller tests
   documents/                     # Document controller tests
+  documents-versions/            # Version controller, service, and repository tests
   tsconfig.json                  # TypeScript config for tests
 ```
 
@@ -153,17 +156,23 @@ Protected endpoints require an access token in the `Authorization` header:
 Authorization: Bearer <access_token>
 ```
 
+Login returns both an access token and a refresh token. Use the refresh token to obtain a new access token when it expires. Each refresh request rotates the refresh token and invalidates the previous one. Logout revokes the refresh token on the server.
+
+Refresh tokens expire after 30 days.
+
 ## API Endpoints
 
 Routes are mounted directly from `src/routes/index.ts`.
 
 ### Auth
 
-| Method | Endpoint         | Auth | Description                       |
-| ------ | ---------------- | ---- | --------------------------------- |
-| POST   | `/auth/register` | No   | Create a new user                 |
-| POST   | `/auth/login`    | No   | Login and receive an access token |
-| GET    | `/auth/me`       | Yes  | Get the authenticated user        |
+| Method | Endpoint         | Auth | Description                                      |
+| ------ | ---------------- | ---- | ------------------------------------------------ |
+| POST   | `/auth/register` | No   | Create a new user                                |
+| POST   | `/auth/login`    | No   | Login and receive access and refresh tokens      |
+| GET    | `/auth/me`       | Yes  | Get the authenticated user                       |
+| POST   | `/auth/refresh`  | Yes  | Rotate the refresh token and issue a new access token |
+| POST   | `/auth/logout`   | Yes  | Revoke the current refresh token                 |
 
 Register body:
 
@@ -181,6 +190,56 @@ Login body:
 {
   "email": "john@example.com",
   "password": "secret123"
+}
+```
+
+Login response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user-uuid",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+Refresh body:
+
+```json
+{
+  "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Refresh response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "newRefreshToken": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  }
+}
+```
+
+Logout body:
+
+```json
+{
+  "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Logout response:
+
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
 }
 ```
 
