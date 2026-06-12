@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNotNull, isNull } from "drizzle-orm";
 import { db } from "../../database/index.ts";
 import { documents } from "../../database/schema/documents.ts";
 
@@ -34,7 +34,7 @@ export class DocumentRepository {
     const [document] = await db
       .select()
       .from(documents)
-      .where(eq(documents.id, id));
+      .where(and(eq(documents.id, id), isNull(documents.deletedAt)));
 
     return document ?? null;
   }
@@ -43,12 +43,15 @@ export class DocumentRepository {
     return await db
       .select()
       .from(documents)
-      .where(eq(documents.ownerId, ownerId));
+      .where(and(eq(documents.ownerId, ownerId), isNull(documents.deletedAt)));
   }
 
   async deleteById(id: string) {
     const [document] = await db
-      .delete(documents)
+      .update(documents)
+      .set({
+        deletedAt: new Date(),
+      })
       .where(eq(documents.id, id))
       .returning();
 
@@ -59,7 +62,9 @@ export class DocumentRepository {
     return await db
       .select()
       .from(documents)
-      .where(eq(documents.folderId, folderId));
+      .where(
+        and(eq(documents.folderId, folderId), isNull(documents.deletedAt)),
+      );
   }
 
   async updateById(
@@ -106,7 +111,10 @@ export class DocumentRepository {
   async findDocuments(ownerId: string, search?: string, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
 
-    const filters = [eq(documents.ownerId, ownerId)];
+    const filters = [
+      eq(documents.ownerId, ownerId),
+      isNull(documents.deletedAt),
+    ];
 
     if (search) {
       filters.push(ilike(documents.name, `%${search}%`));
@@ -122,7 +130,10 @@ export class DocumentRepository {
   }
 
   async countDocuments(ownerId: string, search?: string) {
-    const filters = [eq(documents.ownerId, ownerId)];
+    const filters = [
+      eq(documents.ownerId, ownerId),
+      isNull(documents.deletedAt),
+    ];
 
     if (search) {
       filters.push(ilike(documents.name, `%${search}%`));
@@ -135,6 +146,47 @@ export class DocumentRepository {
       .where(and(...filters));
 
     return result?.total ?? 0;
+  }
+
+  async softDelete(documentId: string) {
+    const [document] = await db
+      .update(documents)
+      .set({
+        deletedAt: new Date(),
+      })
+      .where(eq(documents.id, documentId))
+      .returning();
+
+    return document;
+  }
+
+  async restore(documentId: string) {
+    const [document] = await db
+      .update(documents)
+      .set({
+        deletedAt: null,
+      })
+      .where(eq(documents.id, documentId))
+      .returning();
+
+    return document;
+  }
+
+  async findTrashByOwnerId(ownerId: string) {
+    return await db
+      .select()
+      .from(documents)
+      .where(
+        and(eq(documents.ownerId, ownerId), isNotNull(documents.deletedAt)),
+      );
+  }
+
+  async findDocumentsIncludingDeleted(documentId: string) {
+    const [document] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, documentId));
+    return document ?? null;
   }
 }
 

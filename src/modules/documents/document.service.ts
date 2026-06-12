@@ -95,7 +95,7 @@ export class DocumentService {
       await deleteFromCloudinary(publicId, document.cloudinaryResourceType);
     }
 
-    const deleted = await documentRepository.deleteById(documentId);
+    const deleted = await documentRepository.softDelete(documentId);
 
     if (!deleted) {
       throw new AppError("Failed to delete document record", 500);
@@ -179,6 +179,17 @@ export class DocumentService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async restoreDocument(documentId: string, userId: string) {
+    const document =
+      await documentRepository.findDocumentsIncludingDeleted(documentId);
+
+    if (!document) throw new NotFound("Document not found");
+
+    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+
+    return await documentRepository.restore(documentId);
   }
 }
 
