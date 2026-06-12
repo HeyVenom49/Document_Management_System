@@ -110,6 +110,28 @@ export class DocumentController {
       pagination: result.pagination,
     });
   }
+
+  async getTrash(req: Request, res: Response) {
+    const documents = await documentService.getTrash(req.user!.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: documents,
+    });
+  }
+
+  async restoreDocument(req: Request<{ id: string }>, res: Response) {
+    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
+    const document = await documentService.restoreDocument(
+      id,
+      req.user!.userId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: document,
+    });
+  }
 }
 
 export const documentController = new DocumentController();

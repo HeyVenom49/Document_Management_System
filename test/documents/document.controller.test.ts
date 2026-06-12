@@ -3,72 +3,88 @@ import { createResponse } from "../helpers/http.ts";
 
 const documentId = "11111111-1111-4111-8111-111111111111";
 const folderId = "22222222-2222-4222-8222-222222222222";
+const userId = "user-1";
 
-const uploadDocument = mock(async () => ({
+const documentRecord = {
   id: documentId,
   name: "contract.pdf",
-  ownerId: "user-1",
+  ownerId: userId,
+  folderId,
+  cloudinaryPublicId: "dms/contract",
+  cloudinaryResourceType: "raw",
+};
+
+const create = mock(async () => documentRecord);
+const findByOwnerId = mock(async () => [documentRecord]);
+const findById = mock(async () => documentRecord);
+const softDelete = mock(async () => ({
+  ...documentRecord,
+  deletedAt: new Date(),
 }));
-
-const getDocuments = mock(async () => [
-  {
-    id: documentId,
-    name: "contract.pdf",
-    ownerId: "user-1",
-  },
-]);
-
-const getDocumentById = mock(async () => ({
-  id: documentId,
-  name: "contract.pdf",
-  ownerId: "user-1",
-}));
-
-const deleteDocument = mock(async () => ({
-  message: "Document deleted successfully",
-}));
-
-const updateDocument = mock(async () => ({
-  id: documentId,
+const updateById = mock(async () => ({
+  ...documentRecord,
   name: "Updated contract.pdf",
-  ownerId: "user-1",
 }));
-
-const getDocumentsByFolder = mock(async () => [
-  {
-    id: documentId,
-    folderId,
-    name: "contract.pdf",
-    ownerId: "user-1",
-  },
+const findByFolderId = mock(async () => [documentRecord]);
+const findDocuments = mock(async () => [documentRecord]);
+const countDocuments = mock(async () => 1);
+const findTrashByOwnerId = mock(async () => [
+  { ...documentRecord, deletedAt: new Date("2026-01-01T00:00:00.000Z") },
 ]);
+const findDocumentsIncludingDeleted = mock(async () => ({
+  ...documentRecord,
+  deletedAt: new Date("2026-01-01T00:00:00.000Z"),
+}));
+const restore = mock(async () => documentRecord);
 
-const searchDocuments = mock(async () => ({
-  documents: [
-    {
-      id: documentId,
-      name: "contract.pdf",
-      ownerId: "user-1",
-    },
-  ],
-  pagination: {
-    page: 1,
-    limit: 10,
-    total: 1,
-    totalPages: 1,
+const createVersion = mock(async () => ({
+  id: "version-1",
+  documentId,
+  versionNumber: 1,
+}));
+
+const findByDocumentId = mock(async () => []);
+
+const findFolderById = mock(async () => ({
+  id: folderId,
+  ownerId: userId,
+}));
+
+const uploadToCloudinary = mock(async () => ({
+  public_id: "dms/contract",
+  resource_type: "raw",
+  secure_url: "https://res.cloudinary.com/example/contract.pdf",
+}));
+
+const deleteFromCloudinary = mock(async () => undefined);
+
+mock.module("../../src/modules/documents/document.repository.ts", () => ({
+  documentRepository: {
+    create,
+    findByOwnerId,
+    findById,
+    softDelete,
+    updateById,
+    findByFolderId,
+    findDocuments,
+    countDocuments,
+    findTrashByOwnerId,
+    findDocumentsIncludingDeleted,
+    restore,
   },
 }));
 
-mock.module("../../src/modules/documents/document.service.ts", () => ({
-  documentService: {
-    uploadDocument,
-    getDocuments,
-    getDocumentById,
-    deleteDocument,
-    updateDocument,
-    getDocumentsByFolder,
-    searchDocuments,
-  },
+mock.module("../../src/modules/documents-versions/version.repository.ts", () => ({
+  versionRepository: { createVersion, findByDocumentId },
+}));
+
+mock.module("../../src/modules/folders/folder.repository.ts", () => ({
+  folderRepository: { findById: findFolderById },
+}));
+
+mock.module("../../src/common/utils/cloudinary.ts", () => ({
+  uploadToCloudinary,
+  deleteFromCloudinary,
 }));
 
 const { documentController } = await import(
@@ -77,13 +93,28 @@ const { documentController } = await import(
 
 describe("document endpoints", () => {
   beforeEach(() => {
-    uploadDocument.mockClear();
-    getDocuments.mockClear();
-    getDocumentById.mockClear();
-    deleteDocument.mockClear();
-    updateDocument.mockClear();
-    getDocumentsByFolder.mockClear();
-    searchDocuments.mockClear();
+    create.mockClear();
+    findByOwnerId.mockClear();
+    findById.mockClear();
+    softDelete.mockClear();
+    updateById.mockClear();
+    findByFolderId.mockClear();
+    findDocuments.mockClear();
+    countDocuments.mockClear();
+    findTrashByOwnerId.mockClear();
+    findDocumentsIncludingDeleted.mockClear();
+    restore.mockClear();
+    createVersion.mockClear();
+    findByDocumentId.mockClear();
+    findFolderById.mockClear();
+    uploadToCloudinary.mockClear();
+    deleteFromCloudinary.mockClear();
+
+    findById.mockImplementation(async () => documentRecord);
+    findFolderById.mockImplementation(async () => ({
+      id: folderId,
+      ownerId: userId,
+    }));
   });
 
   it("POST /documents/upload uploads a document for the authenticated user", async () => {
@@ -99,7 +130,7 @@ describe("document endpoints", () => {
       {
         body: { folderId },
         file,
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -109,7 +140,10 @@ describe("document endpoints", () => {
       success: true,
       data: { id: documentId, name: "contract.pdf" },
     });
-    expect(uploadDocument).toHaveBeenCalledWith({ folderId }, file, "user-1");
+    expect(findFolderById).toHaveBeenCalledWith(folderId);
+    expect(uploadToCloudinary).toHaveBeenCalledWith(file.buffer, file.mimetype);
+    expect(create).toHaveBeenCalled();
+    expect(createVersion).toHaveBeenCalled();
   });
 
   it("GET /documents returns documents for the authenticated user", async () => {
@@ -117,7 +151,7 @@ describe("document endpoints", () => {
 
     await documentController.getDocuments(
       {
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -127,7 +161,7 @@ describe("document endpoints", () => {
       success: true,
       data: [{ id: documentId, name: "contract.pdf" }],
     });
-    expect(getDocuments).toHaveBeenCalledWith("user-1");
+    expect(findByOwnerId).toHaveBeenCalledWith(userId);
   });
 
   it("GET /documents/:id returns one document", async () => {
@@ -136,7 +170,7 @@ describe("document endpoints", () => {
     await documentController.getDocumentById(
       {
         params: { id: documentId },
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -146,16 +180,16 @@ describe("document endpoints", () => {
       success: true,
       data: { id: documentId },
     });
-    expect(getDocumentById).toHaveBeenCalledWith(documentId, "user-1");
+    expect(findById).toHaveBeenCalledWith(documentId);
   });
 
-  it("DELETE /documents/:id deletes one document", async () => {
+  it("DELETE /documents/:id soft-deletes one document", async () => {
     const response = createResponse();
 
     await documentController.deleteDocument(
       {
         params: { id: documentId },
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -165,7 +199,47 @@ describe("document endpoints", () => {
       success: true,
       message: "Document deleted successfully",
     });
-    expect(deleteDocument).toHaveBeenCalledWith(documentId, "user-1");
+    expect(findById).toHaveBeenCalledWith(documentId);
+    expect(softDelete).toHaveBeenCalledWith(documentId);
+    expect(deleteFromCloudinary).not.toHaveBeenCalled();
+  });
+
+  it("GET /documents/trash returns soft-deleted documents", async () => {
+    const response = createResponse();
+
+    await documentController.getTrash(
+      {
+        user: { userId },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: [{ id: documentId, name: "contract.pdf" }],
+    });
+    expect(findTrashByOwnerId).toHaveBeenCalledWith(userId);
+  });
+
+  it("POST /documents/:id/restore restores a soft-deleted document", async () => {
+    const response = createResponse();
+
+    await documentController.restoreDocument(
+      {
+        params: { id: documentId },
+        user: { userId },
+      } as never,
+      response as never,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: { id: documentId, name: "contract.pdf" },
+    });
+    expect(findDocumentsIncludingDeleted).toHaveBeenCalledWith(documentId);
+    expect(restore).toHaveBeenCalledWith(documentId);
   });
 
   it("PATCH /documents/:id updates document metadata", async () => {
@@ -175,7 +249,7 @@ describe("document endpoints", () => {
       {
         params: { id: documentId },
         body: { name: "Updated contract.pdf" },
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -185,11 +259,9 @@ describe("document endpoints", () => {
       success: true,
       data: { id: documentId, name: "Updated contract.pdf" },
     });
-    expect(updateDocument).toHaveBeenCalledWith(
-      documentId,
-      { name: "Updated contract.pdf" },
-      "user-1",
-    );
+    expect(updateById).toHaveBeenCalledWith(documentId, {
+      name: "Updated contract.pdf",
+    });
   });
 
   it("GET /documents/folder/:folderId returns documents inside a folder", async () => {
@@ -198,7 +270,7 @@ describe("document endpoints", () => {
     await documentController.getDocumentsByFolder(
       {
         params: { folderId },
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -208,7 +280,8 @@ describe("document endpoints", () => {
       success: true,
       data: [{ id: documentId, folderId }],
     });
-    expect(getDocumentsByFolder).toHaveBeenCalledWith(folderId, "user-1");
+    expect(findFolderById).toHaveBeenCalledWith(folderId);
+    expect(findByFolderId).toHaveBeenCalledWith(folderId);
   });
 
   it("GET /documents/search returns paginated search results", async () => {
@@ -217,7 +290,7 @@ describe("document endpoints", () => {
     await documentController.searchDocuments(
       {
         query: { search: "contract", page: "1", limit: "10" },
-        user: { userId: "user-1" },
+        user: { userId },
       } as never,
       response as never,
     );
@@ -228,10 +301,7 @@ describe("document endpoints", () => {
       data: [{ id: documentId, name: "contract.pdf" }],
       pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
     });
-    expect(searchDocuments).toHaveBeenCalledWith("user-1", {
-      search: "contract",
-      page: 1,
-      limit: 10,
-    });
+    expect(findDocuments).toHaveBeenCalledWith(userId, "contract", 1, 10);
+    expect(countDocuments).toHaveBeenCalledWith(userId, "contract");
   });
 });

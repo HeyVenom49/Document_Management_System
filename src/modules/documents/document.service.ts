@@ -2,10 +2,7 @@ import { AppError } from "../../common/errors/app.error.ts";
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { Forbidden } from "../../common/errors/forbidden.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
-import {
-  deleteFromCloudinary,
-  uploadToCloudinary,
-} from "../../common/utils/cloudinary.ts";
+import { uploadToCloudinary } from "../../common/utils/cloudinary.ts";
 import { versionRepository } from "../documents-versions/version.repository.ts";
 import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
@@ -84,16 +81,6 @@ export class DocumentService {
     if (!document) throw new NotFound("Document not found");
 
     if (document.ownerId !== userId) throw new Forbidden("Access Denied");
-
-    const versions = await versionRepository.findByDocumentId(documentId);
-    const publicIds = new Set([
-      document.cloudinaryPublicId,
-      ...versions.map((version) => version.cloudinaryPublicId),
-    ]);
-
-    for (const publicId of publicIds) {
-      await deleteFromCloudinary(publicId, document.cloudinaryResourceType);
-    }
 
     const deleted = await documentRepository.softDelete(documentId);
 
@@ -189,7 +176,21 @@ export class DocumentService {
 
     if (document.ownerId !== userId) throw new Forbidden("Access Denied");
 
-    return await documentRepository.restore(documentId);
+    if (!document.deletedAt) {
+      throw new BadRequest("Document is not in trash");
+    }
+
+    const restored = await documentRepository.restore(documentId);
+
+    if (!restored) {
+      throw new AppError("Failed to restore document", 500);
+    }
+
+    return restored;
+  }
+
+  async getTrash(userId: string) {
+    return await documentRepository.findTrashByOwnerId(userId);
   }
 }
 

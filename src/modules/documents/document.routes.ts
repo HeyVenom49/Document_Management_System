@@ -31,6 +31,12 @@ router.get(
   documentController.getDocumentsByFolder.bind(documentController),
 );
 
+router.get(
+  "/trash",
+  authMiddleware,
+  documentController.getTrash.bind(documentController),
+);
+
 router.use("/:documentId/versions", versionRoutes);
 
 router.get(
@@ -43,6 +49,12 @@ router.patch(
   "/:id",
   authMiddleware,
   documentController.updateDocument.bind(documentController),
+);
+
+router.post(
+  "/:id/restore",
+  authMiddleware,
+  documentController.restoreDocument.bind(documentController),
 );
 
 router.delete(
