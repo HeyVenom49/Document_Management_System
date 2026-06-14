@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authMiddleware } from "../../common/middleware/auth.middleware.ts";
 import { upload } from "../../common/middleware/upload.middleware.ts";
 import versionRoutes from "../documents-versions/version.routes.ts";
+import shareRoutes from "../share/document-share.route.ts";
 import { documentController } from "./document.controller.ts";
 
 const router = Router();
@@ -38,6 +39,8 @@ router.get(
 );
 
 router.use("/:documentId/versions", versionRoutes);
+
+router.use("/:documentId/share", shareRoutes);
 
 router.get(
   "/:id",
