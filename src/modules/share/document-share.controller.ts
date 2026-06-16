@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { getUserId } from "../../common/http/request.ts";
+import { sendCreated, sendSuccess } from "../../common/http/response.ts";
 import {
   documentIdParamSchema,
   removeShareParamSchema,
@@ -18,15 +20,12 @@ export class DocumentShareController {
 
     const share = await documentShareService.shareDocument(
       documentId,
-      req.user!.userId,
+      getUserId(req),
       data.email,
       data.permission,
     );
 
-    return res.status(201).json({
-      success: true,
-      data: share,
-    });
+    return sendCreated(res, share);
   }
 
   async removeShare(req: Request, res: Response) {
@@ -35,14 +34,11 @@ export class DocumentShareController {
 
     const share = await documentShareService.removeShare(
       documentId,
-      req.user!.userId,
+      getUserId(req),
       sharedUserId,
     );
 
-    return res.status(200).json({
-      success: true,
-      data: share,
-    });
+    return sendSuccess(res, share);
   }
 }
 

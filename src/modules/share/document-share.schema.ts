@@ -1,12 +1,16 @@
 import { z } from "zod";
+import {
+  documentIdParamSchema,
+  documentIdSchema,
+  uuidSchema,
+} from "../../common/schemas/params.ts";
 
-export const documentIdParamSchema = z.object({
-  documentId: z.uuid("Invalid document id"),
-});
+export { documentIdParamSchema };
+export type { DocumentIdParamInput } from "../../common/schemas/params.ts";
 
 export const removeShareParamSchema = z.object({
-  documentId: z.uuid("Invalid document id"),
-  sharedUserId: z.uuid("Invalid user id"),
+  documentId: documentIdSchema,
+  sharedUserId: uuidSchema("user id"),
 });
 
 export const shareDocumentSchema = z.object({
@@ -14,6 +18,5 @@ export const shareDocumentSchema = z.object({
   permission: z.enum(["viewer", "editor"]).default("viewer"),
 });
 
-export type DocumentIdParamInput = z.infer<typeof documentIdParamSchema>;
 export type RemoveShareParamInput = z.infer<typeof removeShareParamSchema>;
 export type ShareDocumentInput = z.infer<typeof shareDocumentSchema>;

@@ -49,3 +49,5 @@ export class TagRepository {
       .where(eq(documentTags.documentId, documentId));
   }
 }
+
+export const tagRepository = new TagRepository();

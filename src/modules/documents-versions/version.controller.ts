@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { getUserId } from "../../common/http/request.ts";
+import { sendCreated, sendSuccess } from "../../common/http/response.ts";
 import {
   documentIdParamSchema,
   versionIdParamSchema,
@@ -16,13 +18,10 @@ export class VersionController {
     const version = await versionService.uploadVersion(
       documentId,
       req.file,
-      req.user!.userId,
+      getUserId(req),
     );
 
-    return res.status(201).json({
-      success: true,
-      data: version,
-    });
+    return sendCreated(res, version);
   }
 
   async getVersions(req: Request, res: Response) {
@@ -30,15 +29,8 @@ export class VersionController {
       req.params,
     );
 
-    const versions = await versionService.getVersions(
-      documentId,
-      req.user!.userId,
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: versions,
-    });
+    const versions = await versionService.getVersions(documentId, getUserId(req));
+    return sendSuccess(res, versions);
   }
 
   async getVersionById(req: Request, res: Response) {
@@ -48,13 +40,10 @@ export class VersionController {
     const version = await versionService.getVersionById(
       documentId,
       versionId,
-      req.user!.userId,
+      getUserId(req),
     );
 
-    return res.status(200).json({
-      success: true,
-      data: version,
-    });
+    return sendSuccess(res, version);
   }
 
   async restoreVersion(req: Request, res: Response) {
@@ -64,13 +53,10 @@ export class VersionController {
     const document = await versionService.restoreVersion(
       documentId,
       versionId,
-      req.user!.userId,
+      getUserId(req),
     );
 
-    return res.status(200).json({
-      success: true,
-      data: document,
-    });
+    return sendSuccess(res, document);
   }
 }
 

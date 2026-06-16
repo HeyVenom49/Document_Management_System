@@ -1,6 +1,19 @@
-import { and, count, desc, eq, ilike, isNotNull, isNull } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNotNull, isNull, type SQL } from "drizzle-orm";
 import { db } from "../../database/index.ts";
 import { documents } from "../../database/schema/documents.ts";
+
+function buildActiveDocumentFilters(ownerId: string, search?: string): SQL[] {
+  const filters: SQL[] = [
+    eq(documents.ownerId, ownerId),
+    isNull(documents.deletedAt),
+  ];
+
+  if (search) {
+    filters.push(ilike(documents.name, `%${search}%`));
+  }
+
+  return filters;
+}
 
 export class DocumentRepository {
   async create(data: {
@@ -44,18 +57,6 @@ export class DocumentRepository {
       .select()
       .from(documents)
       .where(and(eq(documents.ownerId, ownerId), isNull(documents.deletedAt)));
-  }
-
-  async deleteById(id: string) {
-    const [document] = await db
-      .update(documents)
-      .set({
-        deletedAt: new Date(),
-      })
-      .where(eq(documents.id, id))
-      .returning();
-
-    return document ?? null;
   }
 
   async findByFolderId(folderId: string) {
@@ -111,39 +112,22 @@ export class DocumentRepository {
   async findDocuments(ownerId: string, search?: string, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
 
-    const filters = [
-      eq(documents.ownerId, ownerId),
-      isNull(documents.deletedAt),
-    ];
-
-    if (search) {
-      filters.push(ilike(documents.name, `%${search}%`));
-    }
-
     return await db
       .select()
       .from(documents)
-      .where(and(...filters))
+      .where(and(...buildActiveDocumentFilters(ownerId, search)))
       .orderBy(desc(documents.createdAt))
       .limit(limit)
       .offset(offset);
   }
 
   async countDocuments(ownerId: string, search?: string) {
-    const filters = [
-      eq(documents.ownerId, ownerId),
-      isNull(documents.deletedAt),
-    ];
-
-    if (search) {
-      filters.push(ilike(documents.name, `%${search}%`));
-    }
     const [result] = await db
       .select({
         total: count(),
       })
       .from(documents)
-      .where(and(...filters));
+      .where(and(...buildActiveDocumentFilters(ownerId, search)));
 
     return result?.total ?? 0;
   }

@@ -1,8 +1,7 @@
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { Conflict } from "../../common/errors/conflict.error.ts";
-import { Forbidden } from "../../common/errors/forbidden.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
-import { documentRepository } from "../documents/document.repository.ts";
+import { assertDocumentOwner } from "../../common/access/ownership.ts";
 import { userRepository } from "../users/user.repository.ts";
 import { documentShareRepository } from "./document-share.repository.ts";
 
@@ -13,11 +12,7 @@ export class DocumentShareService {
     email: string,
     permission: "viewer" | "editor",
   ) {
-    const document = await documentRepository.findById(documentId);
-
-    if (!document) throw new NotFound("Document not found");
-
-    if (document.ownerId !== ownerId) throw new Forbidden("Access Denied");
+    await assertDocumentOwner(documentId, ownerId);
 
     const user = await userRepository.findByEmail(email);
 
@@ -42,11 +37,7 @@ export class DocumentShareService {
   }
 
   async removeShare(documentId: string, userId: string, sharedUserId: string) {
-    const document = await documentRepository.findById(documentId);
-
-    if (!document) throw new NotFound("Document not found");
-
-    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+    await assertDocumentOwner(documentId, userId);
 
     const share = await documentShareRepository.findShare(
       documentId,

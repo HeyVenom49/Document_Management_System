@@ -1,4 +1,11 @@
 import type { Request, Response } from "express";
+import { getUserId } from "../../common/http/request.ts";
+import {
+  sendCreated,
+  sendMessage,
+  sendPaginated,
+  sendSuccess,
+} from "../../common/http/response.ts";
 import {
   documentIdSchema,
   folderIdParamSchema,
@@ -20,45 +27,27 @@ export class DocumentController {
     const document = await documentService.uploadDocument(
       data,
       req.file!,
-      req.user!.userId,
+      getUserId(req),
     );
 
-    return res.status(201).json({
-      success: true,
-      data: document,
-    });
+    return sendCreated(res, document);
   }
 
   async getDocuments(req: Request, res: Response) {
-    const document = await documentService.getDocuments(req.user!.userId);
-
-    return res.status(200).json({
-      success: true,
-      data: document,
-    });
+    const documents = await documentService.getDocuments(getUserId(req));
+    return sendSuccess(res, documents);
   }
 
   async getDocumentById(req: Request<{ id: string }>, res: Response) {
     const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
-    const document = await documentService.getDocumentById(
-      id,
-      req.user!.userId,
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: document,
-    });
+    const document = await documentService.getDocumentById(id, getUserId(req));
+    return sendSuccess(res, document);
   }
 
   async deleteDocument(req: Request<{ id: string }>, res: Response) {
     const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
-    const result = await documentService.deleteDocument(id, req.user!.userId);
-
-    return res.status(200).json({
-      success: true,
-      ...result,
-    });
+    const result = await documentService.deleteDocument(id, getUserId(req));
+    return sendMessage(res, result.message);
   }
 
   async getDocumentsByFolder(
@@ -71,13 +60,10 @@ export class DocumentController {
 
     const documents = await documentService.getDocumentsByFolder(
       folderId,
-      req.user!.userId,
+      getUserId(req),
     );
 
-    return res.status(200).json({
-      success: true,
-      data: documents,
-    });
+    return sendSuccess(res, documents);
   }
 
   async updateDocument(req: Request<{ id: string }>, res: Response) {
@@ -87,50 +73,27 @@ export class DocumentController {
     const document = await documentService.updateDocument(
       id,
       data,
-      req.user!.userId,
+      getUserId(req),
     );
 
-    return res.status(200).json({
-      success: true,
-      data: document,
-    });
+    return sendSuccess(res, document);
   }
 
   async searchDocuments(req: Request, res: Response) {
     const query: GetDocumentInput = getDocumentSchema.parse(req.query);
-
-    const result = await documentService.searchDocuments(
-      req.user!.userId,
-      query,
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: result.documents,
-      pagination: result.pagination,
-    });
+    const result = await documentService.searchDocuments(getUserId(req), query);
+    return sendPaginated(res, result.documents, result.pagination);
   }
 
   async getTrash(req: Request, res: Response) {
-    const documents = await documentService.getTrash(req.user!.userId);
-
-    return res.status(200).json({
-      success: true,
-      data: documents,
-    });
+    const documents = await documentService.getTrash(getUserId(req));
+    return sendSuccess(res, documents);
   }
 
   async restoreDocument(req: Request<{ id: string }>, res: Response) {
     const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
-    const document = await documentService.restoreDocument(
-      id,
-      req.user!.userId,
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: document,
-    });
+    const document = await documentService.restoreDocument(id, getUserId(req));
+    return sendSuccess(res, document);
   }
 }
 

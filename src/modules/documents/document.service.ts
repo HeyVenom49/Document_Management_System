@@ -1,10 +1,13 @@
 import { AppError } from "../../common/errors/app.error.ts";
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
-import { Forbidden } from "../../common/errors/forbidden.error.ts";
-import { NotFound } from "../../common/errors/not-found.error.ts";
+import {
+  assertDocumentOwner,
+  assertDocumentOwnerIncludingDeleted,
+  assertFolderOwner,
+} from "../../common/access/ownership.ts";
 import { uploadToCloudinary } from "../../common/utils/cloudinary.ts";
+import { requireUploadFile, toVersionFileFields } from "../../common/utils/upload.ts";
 import { versionRepository } from "../documents-versions/version.repository.ts";
-import { folderRepository } from "../folders/folder.repository.ts";
 import { documentRepository } from "./document.repository.ts";
 import type {
   GetDocumentInput,
@@ -18,44 +21,32 @@ export class DocumentService {
     file: Express.Multer.File,
     userId: string,
   ) {
-    if (!file) {
-      throw new BadRequest("File is required");
-    }
+    const uploadFile = requireUploadFile(file);
 
     if (data.folderId) {
-      const folder = await folderRepository.findById(data.folderId);
-
-      if (!folder) {
-        throw new NotFound("Folder not found");
-      }
-
-      if (folder.ownerId !== userId) {
-        throw new Forbidden();
-      }
+      await assertFolderOwner(data.folderId, userId);
     }
 
-    const uploadFile = await uploadToCloudinary(file.buffer, file.mimetype);
+    const cloudinaryFile = await uploadToCloudinary(
+      uploadFile.buffer,
+      uploadFile.mimetype,
+    );
+    const versionFields = toVersionFileFields(cloudinaryFile, uploadFile);
 
     const document = await documentRepository.create({
-      name: file.originalname,
+      name: uploadFile.originalname,
       ownerId: userId,
       folderId: data.folderId ?? null,
-      cloudinaryPublicId: uploadFile.public_id,
-      cloudinaryResourceType: uploadFile.resource_type,
-      fileUrl: uploadFile.secure_url,
-      mimeType: file.mimetype,
-      fileSize: file.size,
+      cloudinaryResourceType: cloudinaryFile.resource_type,
+      ...versionFields,
     });
 
-    if (!document) throw new NotFound("Document not found");
+    if (!document) throw new BadRequest("Failed to create document");
 
     await versionRepository.createVersion({
       documentId: document.id,
       versionNumber: 1,
-      cloudinaryPublicId: uploadFile.public_id,
-      fileUrl: uploadFile.secure_url,
-      mimeType: file.mimetype,
-      fileSize: file.size,
+      ...versionFields,
     });
 
     return document;
@@ -66,21 +57,11 @@ export class DocumentService {
   }
 
   async getDocumentById(documentId: string, userId: string) {
-    const document = await documentRepository.findById(documentId);
-
-    if (!document) throw new NotFound("Document not found");
-
-    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
-
-    return document;
+    return await assertDocumentOwner(documentId, userId);
   }
 
   async deleteDocument(documentId: string, userId: string) {
-    const document = await documentRepository.findById(documentId);
-
-    if (!document) throw new NotFound("Document not found");
-
-    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+    await assertDocumentOwner(documentId, userId);
 
     const deleted = await documentRepository.softDelete(documentId);
 
@@ -94,12 +75,7 @@ export class DocumentService {
   }
 
   async getDocumentsByFolder(folderId: string, userId: string) {
-    const folder = await folderRepository.findById(folderId);
-
-    if (!folder) throw new NotFound("Folder not found");
-
-    if (folder.ownerId !== userId) throw new Forbidden("Access Denied");
-
+    await assertFolderOwner(folderId, userId);
     return await documentRepository.findByFolderId(folderId);
   }
 
@@ -108,18 +84,10 @@ export class DocumentService {
     data: UpdateDocumentInput,
     userId: string,
   ) {
-    const document = await documentRepository.findById(documentId);
-
-    if (!document) throw new NotFound("Document not found");
-
-    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+    await assertDocumentOwner(documentId, userId);
 
     if (data.folderId) {
-      const folder = await folderRepository.findById(data.folderId);
-
-      if (!folder) throw new NotFound("Folder not found");
-
-      if (folder.ownerId !== userId) throw new Forbidden("Access Denied");
+      await assertFolderOwner(data.folderId, userId);
     }
 
     const updateData: {
@@ -169,12 +137,10 @@ export class DocumentService {
   }
 
   async restoreDocument(documentId: string, userId: string) {
-    const document =
-      await documentRepository.findDocumentsIncludingDeleted(documentId);
-
-    if (!document) throw new NotFound("Document not found");
-
-    if (document.ownerId !== userId) throw new Forbidden("Access Denied");
+    const document = await assertDocumentOwnerIncludingDeleted(
+      documentId,
+      userId,
+    );
 
     if (!document.deletedAt) {
       throw new BadRequest("Document is not in trash");

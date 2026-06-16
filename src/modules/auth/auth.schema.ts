@@ -2,9 +2,7 @@ import { z } from "zod";
 
 export const registerSchema = z.object({
   username: z.string().min(3).max(30),
-
   email: z.email(),
-
   password: z.string().min(6),
 });
 
@@ -22,9 +20,6 @@ export const refreshTokenSchema = z.object({
 });
 
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type LogoutInput = RefreshTokenInput;
 
-export const logoutSchema = z.object({
-  refreshToken: z.uuid(),
-});
-
-export type LogoutInput = z.infer<typeof logoutSchema>;
+export const logoutSchema = refreshTokenSchema;

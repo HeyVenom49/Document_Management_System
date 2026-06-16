@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { getUserId } from "../../common/http/request.ts";
+import { sendCreated, sendSuccess } from "../../common/http/response.ts";
 import {
   createFolderSchema,
   type CreateFolderInput,
@@ -8,22 +10,13 @@ import { folderService } from "./folder.service.ts";
 export class FolderController {
   async createFolder(req: Request, res: Response) {
     const data: CreateFolderInput = createFolderSchema.parse(req.body);
-
-    const user = await folderService.createFolder(data, req.user!.userId);
-
-    return res.status(201).json({
-      success: true,
-      data: user,
-    });
+    const folder = await folderService.createFolder(data, getUserId(req));
+    return sendCreated(res, folder);
   }
 
   async getFolder(req: Request, res: Response) {
-    const folder = await folderService.getFolder(req.user!.userId);
-
-    return res.status(200).json({
-      success: true,
-      data: folder,
-    });
+    const folders = await folderService.getFolder(getUserId(req));
+    return sendSuccess(res, folders);
   }
 }
 
