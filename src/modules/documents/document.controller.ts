@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { documentIdParamSchema, type DocumentIdParamInput } from "../../common/schemas/params.ts";
 import { getUserId } from "../../common/http/request.ts";
 import {
   sendCreated,
@@ -7,12 +8,10 @@ import {
   sendSuccess,
 } from "../../common/http/response.ts";
 import {
-  documentIdSchema,
   folderIdParamSchema,
   getDocumentSchema,
   updateDocumentSchema,
   uploadDocumentSchema,
-  type DocumentIdInput,
   type FolderIdParamInput,
   type GetDocumentInput,
   type UpdateDocumentInput,
@@ -38,15 +37,25 @@ export class DocumentController {
     return sendSuccess(res, documents);
   }
 
-  async getDocumentById(req: Request<{ id: string }>, res: Response) {
-    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
-    const document = await documentService.getDocumentById(id, getUserId(req));
+  async getDocumentById(req: Request, res: Response) {
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
+    const document = await documentService.getDocumentById(
+      documentId,
+      getUserId(req),
+    );
     return sendSuccess(res, document);
   }
 
-  async deleteDocument(req: Request<{ id: string }>, res: Response) {
-    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
-    const result = await documentService.deleteDocument(id, getUserId(req));
+  async deleteDocument(req: Request, res: Response) {
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
+    const result = await documentService.deleteDocument(
+      documentId,
+      getUserId(req),
+    );
     return sendMessage(res, result.message);
   }
 
@@ -66,12 +75,14 @@ export class DocumentController {
     return sendSuccess(res, documents);
   }
 
-  async updateDocument(req: Request<{ id: string }>, res: Response) {
-    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
+  async updateDocument(req: Request, res: Response) {
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
     const data: UpdateDocumentInput = updateDocumentSchema.parse(req.body);
 
     const document = await documentService.updateDocument(
-      id,
+      documentId,
       data,
       getUserId(req),
     );
@@ -90,9 +101,14 @@ export class DocumentController {
     return sendSuccess(res, documents);
   }
 
-  async restoreDocument(req: Request<{ id: string }>, res: Response) {
-    const id: DocumentIdInput = documentIdSchema.parse(req.params.id);
-    const document = await documentService.restoreDocument(id, getUserId(req));
+  async restoreDocument(req: Request, res: Response) {
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
+    const document = await documentService.restoreDocument(
+      documentId,
+      getUserId(req),
+    );
     return sendSuccess(res, document);
   }
 }

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { authMiddleware } from "../../common/middleware/auth.middleware.ts";
 import { upload } from "../../common/middleware/upload.middleware.ts";
+import { route } from "../../common/http/route.ts";
 import versionRoutes from "../documents-versions/version.routes.ts";
-import shareRoutes from "../share/document-share.route.ts";
+import shareRoutes from "../share/document-share.routes.ts";
+import documentTagRoutes from "../tags/document-tags.routes.ts";
 import { documentController } from "./document.controller.ts";
 
 const router = Router();
@@ -11,59 +13,40 @@ router.post(
   "/upload",
   authMiddleware,
   upload.single("file"),
-  documentController.uploadDocument.bind(documentController),
+  route(documentController, "uploadDocument"),
 );
-
-router.get(
-  "/",
-  authMiddleware,
-  documentController.getDocuments.bind(documentController),
-);
-
-router.get(
-  "/search",
-  authMiddleware,
-  documentController.searchDocuments.bind(documentController),
-);
-
+router.get("/", authMiddleware, route(documentController, "getDocuments"));
+router.get("/search", authMiddleware, route(documentController, "searchDocuments"));
 router.get(
   "/folder/:folderId",
   authMiddleware,
-  documentController.getDocumentsByFolder.bind(documentController),
+  route(documentController, "getDocumentsByFolder"),
 );
-
-router.get(
-  "/trash",
-  authMiddleware,
-  documentController.getTrash.bind(documentController),
-);
+router.get("/trash", authMiddleware, route(documentController, "getTrash"));
 
 router.use("/:documentId/versions", versionRoutes);
-
 router.use("/:documentId/share", shareRoutes);
+router.use("/:documentId/tags", documentTagRoutes);
 
 router.get(
-  "/:id",
+  "/:documentId",
   authMiddleware,
-  documentController.getDocumentById.bind(documentController),
+  route(documentController, "getDocumentById"),
 );
-
 router.patch(
-  "/:id",
+  "/:documentId",
   authMiddleware,
-  documentController.updateDocument.bind(documentController),
+  route(documentController, "updateDocument"),
 );
-
 router.post(
-  "/:id/restore",
+  "/:documentId/restore",
   authMiddleware,
-  documentController.restoreDocument.bind(documentController),
+  route(documentController, "restoreDocument"),
 );
-
 router.delete(
-  "/:id",
+  "/:documentId",
   authMiddleware,
-  documentController.deleteDocument.bind(documentController),
+  route(documentController, "deleteDocument"),
 );
 
 export default router;

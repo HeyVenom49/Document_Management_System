@@ -164,12 +164,12 @@ describe("document endpoints", () => {
     expect(findByOwnerId).toHaveBeenCalledWith(userId);
   });
 
-  it("GET /documents/:id returns one document", async () => {
+  it("GET /documents/:documentId returns one document", async () => {
     const response = createResponse();
 
     await documentController.getDocumentById(
       {
-        params: { id: documentId },
+        params: { documentId },
         user: { userId },
       } as never,
       response as never,
@@ -183,12 +183,12 @@ describe("document endpoints", () => {
     expect(findById).toHaveBeenCalledWith(documentId);
   });
 
-  it("DELETE /documents/:id soft-deletes one document", async () => {
+  it("DELETE /documents/:documentId soft-deletes one document", async () => {
     const response = createResponse();
 
     await documentController.deleteDocument(
       {
-        params: { id: documentId },
+        params: { documentId },
         user: { userId },
       } as never,
       response as never,
@@ -222,12 +222,12 @@ describe("document endpoints", () => {
     expect(findTrashByOwnerId).toHaveBeenCalledWith(userId);
   });
 
-  it("POST /documents/:id/restore restores a soft-deleted document", async () => {
+  it("POST /documents/:documentId/restore restores a soft-deleted document", async () => {
     const response = createResponse();
 
     await documentController.restoreDocument(
       {
-        params: { id: documentId },
+        params: { documentId },
         user: { userId },
       } as never,
       response as never,
@@ -242,12 +242,12 @@ describe("document endpoints", () => {
     expect(restore).toHaveBeenCalledWith(documentId);
   });
 
-  it("PATCH /documents/:id updates document metadata", async () => {
+  it("PATCH /documents/:documentId updates document metadata", async () => {
     const response = createResponse();
 
     await documentController.updateDocument(
       {
-        params: { id: documentId },
+        params: { documentId },
         body: { name: "Updated contract.pdf" },
         user: { userId },
       } as never,
