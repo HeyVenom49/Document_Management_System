@@ -34,7 +34,12 @@ export class TagRepository {
   async removeFromDocument(documentId: string, tagId: string) {
     await db
       .delete(documentTags)
-      .where(and(eq(documentTags.documentId, documentId), eq(tags.id, tagId)));
+      .where(
+        and(
+          eq(documentTags.documentId, documentId),
+          eq(documentTags.tagId, tagId),
+        ),
+      );
   }
 
   async getDocumentTags(documentId: string) {

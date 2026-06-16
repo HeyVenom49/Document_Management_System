@@ -14,3 +14,6 @@ export const sendPaginated = (
   data: unknown,
   pagination: unknown,
 ) => res.status(200).json({ success: true, data, pagination });
+
+export const sendDownloadRedirect = (res: Response, downloadUrl: string) =>
+  res.redirect(302, downloadUrl);

@@ -44,6 +44,8 @@ const updateVersionMetaData = mock(async () => ({
   currentVersion: 1,
 }));
 
+const findShare = mock(async () => null);
+
 const uploadToCloudinary = mock(async () => ({
   public_id: "dms/new-file",
   secure_url: "https://res.cloudinary.com/example/new-file.pdf",
@@ -62,8 +64,33 @@ mock.module("../../src/modules/documents-versions/version.repository.ts", () => 
   },
 }));
 
+mock.module("../../src/modules/share/document-share.repository.ts", () => ({
+  documentShareRepository: { findShare },
+}));
+
 mock.module("../../src/common/utils/cloudinary.ts", () => ({
   uploadToCloudinary,
+  withSignedFileUrl: <T>(resource: T) => resource,
+  withSignedFileUrls: <T>(resources: T[]) => resources,
+  toDownloadPayload: (
+    resource: { mimeType: string; fileSize: number },
+    fileName: string,
+  ) => ({
+    downloadUrl: `https://res.cloudinary.com/example/download/${fileName}`,
+    fileName,
+    mimeType: resource.mimeType,
+    fileSize: resource.fileSize,
+  }),
+}));
+
+mock.module("../../src/common/utils/file-validation.ts", () => ({
+  validateUploadFile: mock(() => undefined),
+}));
+
+const auditLog = mock(async () => ({}));
+
+mock.module("../../src/modules/audit/audit.services.ts", () => ({
+  auditService: { log: auditLog },
 }));
 
 const { versionController } = await import(
@@ -79,6 +106,8 @@ describe("version endpoints", () => {
     findVersionById.mockClear();
     updateVersionMetaData.mockClear();
     uploadToCloudinary.mockClear();
+    findShare.mockClear();
+    auditLog.mockClear();
 
     findById.mockImplementation(async () => ({
       id: documentId,
@@ -111,6 +140,10 @@ describe("version endpoints", () => {
       id: versionId,
       documentId,
       versionNumber: 2,
+      mimeType: "application/pdf",
+      fileSize: 100,
+      cloudinaryPublicId: "dms/v2",
+      fileUrl: "https://res.cloudinary.com/example/v2.pdf",
     }));
 
     updateVersionMetaData.mockImplementation(async () => ({
@@ -127,7 +160,7 @@ describe("version endpoints", () => {
       originalname: "contract-v2.pdf",
       mimetype: "application/pdf",
       size: 200,
-      buffer: Buffer.from("updated-pdf-content"),
+      buffer: Buffer.from("%PDF-1.4"),
     };
 
     await versionController.uploadVersion(
@@ -183,6 +216,25 @@ describe("version endpoints", () => {
       data: { id: versionId, versionNumber: 2 },
     });
     expect(findVersionById).toHaveBeenCalledWith(versionId);
+  });
+
+  it("GET /documents/:documentId/versions/:versionId/download redirects to the signed download url", async () => {
+    const response = createResponse();
+
+    await versionController.downloadVersion(
+      {
+        params: { documentId, versionId },
+        user: { userId: "user-1" },
+      } as never,
+      response as never,
+    );
+
+    expect(response.redirect).toHaveBeenCalledWith(
+      302,
+      "https://res.cloudinary.com/example/download/contract-v2.pdf",
+    );
+    expect(findVersionById).toHaveBeenCalledWith(versionId);
+    expect(auditLog).toHaveBeenCalled();
   });
 
   it("POST /documents/:documentId/versions/:versionId/restore restores a version", async () => {

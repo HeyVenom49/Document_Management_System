@@ -2,13 +2,14 @@ import type { Request, Response } from "express";
 import { getUserId } from "../../common/http/request.ts";
 import { sendCreated, sendMessage, sendSuccess } from "../../common/http/response.ts";
 import {
+  clearRefreshTokenCookie,
+  getRefreshTokenFromRequest,
+  setRefreshTokenCookie,
+} from "../../common/utils/cookies.ts";
+import {
   loginSchema,
-  logoutSchema,
-  refreshTokenSchema,
   registerSchema,
   type LoginInput,
-  type LogoutInput,
-  type RefreshTokenInput,
   type RegisterInput,
 } from "./auth.schema.ts";
 import { authService } from "./auth.service.ts";
@@ -22,8 +23,14 @@ export class AuthController {
 
   async login(req: Request, res: Response) {
     const data: LoginInput = loginSchema.parse(req.body);
-    const user = await authService.login(data);
-    return sendCreated(res, user);
+    const result = await authService.login(data);
+
+    setRefreshTokenCookie(res, result.refreshToken);
+
+    return sendCreated(res, {
+      id: result.id,
+      accessToken: result.accessToken,
+    });
   }
 
   async me(req: Request, res: Response) {
@@ -32,17 +39,22 @@ export class AuthController {
   }
 
   async refreshToken(req: Request, res: Response) {
-    const { refreshToken }: RefreshTokenInput = refreshTokenSchema.parse(
-      req.body,
-    );
+    const refreshToken = getRefreshTokenFromRequest(req);
+    const result = await authService.refreshAccessToken(refreshToken);
 
-    const token = await authService.refreshAccessToken(refreshToken);
-    return sendSuccess(res, token);
+    setRefreshTokenCookie(res, result.refreshToken);
+
+    return sendSuccess(res, {
+      accessToken: result.accessToken,
+    });
   }
 
   async logout(req: Request, res: Response) {
-    const { refreshToken }: LogoutInput = logoutSchema.parse(req.body);
+    const refreshToken = getRefreshTokenFromRequest(req);
     const result = await authService.logout(refreshToken);
+
+    clearRefreshTokenCookie(res);
+
     return sendMessage(res, result.message);
   }
 }

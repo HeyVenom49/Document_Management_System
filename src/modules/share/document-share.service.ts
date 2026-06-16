@@ -2,6 +2,8 @@ import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { Conflict } from "../../common/errors/conflict.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
 import { assertDocumentOwner } from "../../common/access/ownership.ts";
+import { AuditAction } from "../../common/constants/audit-action.ts";
+import { auditService } from "../audit/audit.services.ts";
 import { userRepository } from "../users/user.repository.ts";
 import { documentShareRepository } from "./document-share.repository.ts";
 
@@ -16,7 +18,9 @@ export class DocumentShareService {
 
     const user = await userRepository.findByEmail(email);
 
-    if (!user) throw new NotFound("User not found");
+    if (!user) {
+      throw new NotFound("Unable to share document with this recipient");
+    }
 
     if (user.id === ownerId) {
       throw new BadRequest("Cannot share document with yourself");
@@ -29,11 +33,23 @@ export class DocumentShareService {
 
     if (existShare) throw new Conflict("Document already shared with user");
 
-    return await documentShareRepository.shareDocument({
+    const share = await documentShareRepository.shareDocument({
       documentId,
       sharedWithUserId: user.id,
       permission,
     });
+
+    await auditService.log({
+      userId: ownerId,
+      documentId,
+      action: AuditAction.DOCUMENT_SHARED,
+      metadata: {
+        sharedWithUserId: user.id,
+        permission,
+      },
+    });
+
+    return share;
   }
 
   async removeShare(documentId: string, userId: string, sharedUserId: string) {

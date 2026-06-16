@@ -1,4 +1,3 @@
-import { Forbidden } from "../errors/forbidden.error.ts";
 import { NotFound } from "../errors/not-found.error.ts";
 import { documentRepository } from "../../modules/documents/document.repository.ts";
 import { folderRepository } from "../../modules/folders/folder.repository.ts";
@@ -11,8 +10,9 @@ export function assertOwned<T extends OwnedResource>(
   userId: string,
   notFoundMessage: string,
 ): T {
-  if (!resource) throw new NotFound(notFoundMessage);
-  if (resource.ownerId !== userId) throw new Forbidden("Access Denied");
+  if (!resource || resource.ownerId !== userId) {
+    throw new NotFound(notFoundMessage);
+  }
   return resource;
 }
 

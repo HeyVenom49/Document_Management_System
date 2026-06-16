@@ -6,6 +6,7 @@ import {
   sendMessage,
   sendPaginated,
   sendSuccess,
+  sendDownloadRedirect,
 } from "../../common/http/response.ts";
 import {
   folderIdParamSchema,
@@ -46,6 +47,18 @@ export class DocumentController {
       getUserId(req),
     );
     return sendSuccess(res, document);
+  }
+
+  async downloadDocument(req: Request, res: Response) {
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
+    const download = await documentService.downloadDocument(
+      documentId,
+      getUserId(req),
+    );
+
+    return sendDownloadRedirect(res, download.downloadUrl);
   }
 
   async deleteDocument(req: Request, res: Response) {
@@ -101,6 +114,11 @@ export class DocumentController {
     return sendSuccess(res, documents);
   }
 
+  async getSharedDocuments(req: Request, res: Response) {
+    const documents = await documentService.getSharedDocuments(getUserId(req));
+    return sendSuccess(res, documents);
+  }
+
   async restoreDocument(req: Request, res: Response) {
     const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
       req.params,
@@ -110,6 +128,17 @@ export class DocumentController {
       getUserId(req),
     );
     return sendSuccess(res, document);
+  }
+
+  async permanentlyDeleteDocument(req: Request, res: Response) {
+    const { documentId }: DocumentIdParamInput = documentIdParamSchema.parse(
+      req.params,
+    );
+    const result = await documentService.permanentlyDeleteDocument(
+      documentId,
+      getUserId(req),
+    );
+    return sendMessage(res, result.message);
   }
 }
 

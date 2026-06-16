@@ -12,6 +12,13 @@ export function createResponse() {
       response.body = body;
       return response;
     }),
+    redirect: mock((code: number, url: string) => {
+      response.statusCode = code;
+      response.body = url;
+      return response;
+    }),
+    cookie: mock(() => response),
+    clearCookie: mock(() => response),
   };
 
   return response;

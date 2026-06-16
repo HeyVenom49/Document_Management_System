@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { createResponse } from "../helpers/http.ts";
+import { REFRESH_TOKEN_COOKIE } from "../../src/common/utils/cookies.ts";
 
 const register = mock(async () => ({
   id: "user-1",
@@ -22,7 +23,7 @@ const me = mock(async () => ({
 
 const refreshAccessToken = mock(async () => ({
   accessToken: "new-access-token",
-  newRefreshToken: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  refreshToken: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 }));
 
 const logout = mock(async () => ({
@@ -54,7 +55,7 @@ describe("auth endpoints", () => {
         body: {
           username: "venom",
           email: "venom@example.com",
-          password: "secret1",
+          password: "secret12",
         },
       } as never,
       response as never,
@@ -68,18 +69,18 @@ describe("auth endpoints", () => {
     expect(register).toHaveBeenCalledWith({
       username: "venom",
       email: "venom@example.com",
-      password: "secret1",
+      password: "secret12",
     });
   });
 
-  it("POST /auth/login returns access and refresh tokens", async () => {
+  it("POST /auth/login returns access token and sets refresh cookie", async () => {
     const response = createResponse();
 
     await authController.login(
       {
         body: {
           email: "venom@example.com",
-          password: "secret1",
+          password: "secret12",
         },
       } as never,
       response as never,
@@ -91,12 +92,16 @@ describe("auth endpoints", () => {
       data: {
         id: "user-1",
         accessToken: "access-token",
-        refreshToken: "550e8400-e29b-41d4-a716-446655440000",
       },
     });
+    expect(response.cookie).toHaveBeenCalledWith(
+      REFRESH_TOKEN_COOKIE,
+      "550e8400-e29b-41d4-a716-446655440000",
+      expect.objectContaining({ httpOnly: true }),
+    );
     expect(login).toHaveBeenCalledWith({
       email: "venom@example.com",
-      password: "secret1",
+      password: "secret12",
     });
   });
 
@@ -122,14 +127,15 @@ describe("auth endpoints", () => {
     expect(me).toHaveBeenCalledWith("user-1");
   });
 
-  it("POST /auth/refresh returns a new access token and refresh token", async () => {
+  it("POST /auth/refresh returns a new access token and rotates refresh cookie", async () => {
     const response = createResponse();
 
     await authController.refreshToken(
       {
-        body: {
-          refreshToken: "550e8400-e29b-41d4-a716-446655440000",
+        cookies: {
+          [REFRESH_TOKEN_COOKIE]: "550e8400-e29b-41d4-a716-446655440000",
         },
+        body: {},
       } as never,
       response as never,
     );
@@ -139,22 +145,27 @@ describe("auth endpoints", () => {
       success: true,
       data: {
         accessToken: "new-access-token",
-        newRefreshToken: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
       },
     });
     expect(refreshAccessToken).toHaveBeenCalledWith(
       "550e8400-e29b-41d4-a716-446655440000",
     );
+    expect(response.cookie).toHaveBeenCalledWith(
+      REFRESH_TOKEN_COOKIE,
+      "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      expect.objectContaining({ httpOnly: true }),
+    );
   });
 
-  it("POST /auth/logout revokes the refresh token", async () => {
+  it("POST /auth/logout revokes the refresh token and clears cookie", async () => {
     const response = createResponse();
 
     await authController.logout(
       {
-        body: {
-          refreshToken: "550e8400-e29b-41d4-a716-446655440000",
+        cookies: {
+          [REFRESH_TOKEN_COOKIE]: "550e8400-e29b-41d4-a716-446655440000",
         },
+        body: {},
       } as never,
       response as never,
     );
@@ -166,6 +177,10 @@ describe("auth endpoints", () => {
     });
     expect(logout).toHaveBeenCalledWith(
       "550e8400-e29b-41d4-a716-446655440000",
+    );
+    expect(response.clearCookie).toHaveBeenCalledWith(
+      REFRESH_TOKEN_COOKIE,
+      expect.objectContaining({ httpOnly: true }),
     );
   });
 });

@@ -1,6 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../../database/index.ts";
 import { documentShare } from "../../database/schema/document-shares.ts";
+import { documents } from "../../database/schema/documents.ts";
 
 export class DocumentShareRepository {
   async shareDocument(data: {
@@ -33,11 +34,29 @@ export class DocumentShareRepository {
     return share ?? null;
   }
 
-  async getSharedDocuments(documentId: string) {
+  async getSharesForDocument(documentId: string) {
     return await db
       .select()
       .from(documentShare)
-      .where(eq(documentShare.sharedWithUserId, documentId));
+      .where(eq(documentShare.documentId, documentId));
+  }
+
+  async findSharedWithUser(userId: string) {
+    return await db
+      .select({
+        document: documents,
+        permission: documentShare.permission,
+        sharedAt: documentShare.createdAt,
+      })
+      .from(documentShare)
+      .innerJoin(documents, eq(documentShare.documentId, documents.id))
+      .where(
+        and(
+          eq(documentShare.sharedWithUserId, userId),
+          isNull(documents.deletedAt),
+        ),
+      )
+      .orderBy(desc(documentShare.createdAt));
   }
 
   async removeShare(documentId: string, userId: string) {

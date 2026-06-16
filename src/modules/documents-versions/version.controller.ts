@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { getUserId } from "../../common/http/request.ts";
-import { sendCreated, sendSuccess } from "../../common/http/response.ts";
+import { sendCreated, sendSuccess, sendDownloadRedirect } from "../../common/http/response.ts";
 import {
   documentIdParamSchema,
   versionIdParamSchema,
@@ -44,6 +44,19 @@ export class VersionController {
     );
 
     return sendSuccess(res, version);
+  }
+
+  async downloadVersion(req: Request, res: Response) {
+    const { documentId, versionId }: VersionIdParamInput =
+      versionIdParamSchema.parse(req.params);
+
+    const download = await versionService.downloadVersion(
+      documentId,
+      versionId,
+      getUserId(req),
+    );
+
+    return sendDownloadRedirect(res, download.downloadUrl);
   }
 
   async restoreVersion(req: Request, res: Response) {

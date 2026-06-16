@@ -1,4 +1,5 @@
 import argon2 from "argon2";
+import { AppError } from "../../common/errors/app.error.ts";
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
 import { NotFound } from "../../common/errors/not-found.error.ts";
 import { Unauthorized } from "../../common/errors/unauthorized.error.ts";
@@ -12,7 +13,7 @@ export class AuthService {
     const existingUser = await userRepository.findByEmail(data.email);
 
     if (existingUser) {
-      throw new BadRequest("Email already exists");
+      throw new BadRequest("Unable to create account with these credentials");
     }
 
     const passwordHash = await argon2.hash(data.password);
@@ -36,6 +37,11 @@ export class AuthService {
     if (!user) {
       throw new Unauthorized("Email or Password might be wrong");
     }
+
+    if (!user.is_active) {
+      throw new Unauthorized("Email or Password might be wrong");
+    }
+
     const isPasswordCorrect = await argon2.verify(
       user.password_hash,
       data.password,
@@ -49,15 +55,19 @@ export class AuthService {
       userId: user.id,
     });
 
-    const refreshToken = await refreshTokenRepository.create(
+    const refreshTokenRecord = await refreshTokenRepository.create(
       user.id,
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     );
 
+    if (!refreshTokenRecord) {
+      throw new AppError("Failed to create refresh token", 500);
+    }
+
     return {
       id: user.id,
       accessToken,
-      refreshToken,
+      refreshToken: refreshTokenRecord.token,
     };
   }
 
@@ -89,16 +99,23 @@ export class AuthService {
 
     await refreshTokenRepository.deleteByToken(refreshToken);
 
-    const newRefreshToken = await refreshTokenRepository.create(
+    const newRefreshTokenRecord = await refreshTokenRepository.create(
       user.id,
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     );
+
+    if (!newRefreshTokenRecord) {
+      throw new AppError("Failed to rotate refresh token", 500);
+    }
 
     const accessToken = generateAccessToken({
       userId: user.id,
     });
 
-    return { accessToken, newRefreshToken };
+    return {
+      accessToken,
+      refreshToken: newRefreshTokenRecord.token,
+    };
   }
 
   async logout(refreshToken: string) {

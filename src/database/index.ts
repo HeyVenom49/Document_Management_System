@@ -22,3 +22,12 @@ export async function connectDB() {
     throw new AppError("Failed to connect the database", 500);
   }
 }
+
+export async function checkDatabaseHealth(): Promise<boolean> {
+  try {
+    await pool.query("SELECT 1");
+    return true;
+  } catch {
+    return false;
+  }
+}

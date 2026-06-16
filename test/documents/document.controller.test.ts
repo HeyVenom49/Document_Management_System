@@ -12,6 +12,9 @@ const documentRecord = {
   folderId,
   cloudinaryPublicId: "dms/contract",
   cloudinaryResourceType: "raw",
+  mimeType: "application/pdf",
+  fileSize: 100,
+  currentVersion: 1,
 };
 
 const create = mock(async () => documentRecord);
@@ -43,12 +46,24 @@ const createVersion = mock(async () => ({
   versionNumber: 1,
 }));
 
-const findByDocumentId = mock(async () => []);
+const findByDocumentId = mock(async () => [
+  {
+    id: "version-1",
+    documentId,
+    versionNumber: 1,
+    cloudinaryPublicId: "dms/contract-v1",
+    fileUrl: "https://res.cloudinary.com/example/v1.pdf",
+    mimeType: "application/pdf",
+    fileSize: 100,
+  },
+]);
 
 const findFolderById = mock(async () => ({
   id: folderId,
   ownerId: userId,
 }));
+
+const findShare = mock(async () => null);
 
 const uploadToCloudinary = mock(async () => ({
   public_id: "dms/contract",
@@ -57,6 +72,19 @@ const uploadToCloudinary = mock(async () => ({
 }));
 
 const deleteFromCloudinary = mock(async () => undefined);
+
+const findSharedWithUser = mock(async () => [
+  {
+    document: documentRecord,
+    permission: "editor" as const,
+    sharedAt: new Date("2026-01-01T00:00:00.000Z"),
+  },
+]);
+const removeAllSharesForDocument = mock(async () => undefined);
+const hardDelete = mock(async () => ({
+  ...documentRecord,
+  deletedAt: new Date("2026-01-01T00:00:00.000Z"),
+}));
 
 mock.module("../../src/modules/documents/document.repository.ts", () => ({
   documentRepository: {
@@ -71,6 +99,7 @@ mock.module("../../src/modules/documents/document.repository.ts", () => ({
     findTrashByOwnerId,
     findDocumentsIncludingDeleted,
     restore,
+    hardDelete,
   },
 }));
 
@@ -82,9 +111,38 @@ mock.module("../../src/modules/folders/folder.repository.ts", () => ({
   folderRepository: { findById: findFolderById },
 }));
 
+mock.module("../../src/modules/share/document-share.repository.ts", () => ({
+  documentShareRepository: {
+    findShare,
+    findSharedWithUser,
+    removeAllSharesForDocument,
+  },
+}));
+
 mock.module("../../src/common/utils/cloudinary.ts", () => ({
   uploadToCloudinary,
   deleteFromCloudinary,
+  withSignedFileUrl: <T>(resource: T) => resource,
+  withSignedFileUrls: <T>(resources: T[]) => resources,
+  toDownloadPayload: (
+    resource: { mimeType: string; fileSize: number },
+    fileName: string,
+  ) => ({
+    downloadUrl: `https://res.cloudinary.com/example/download/${fileName}`,
+    fileName,
+    mimeType: resource.mimeType,
+    fileSize: resource.fileSize,
+  }),
+}));
+
+mock.module("../../src/common/utils/file-validation.ts", () => ({
+  validateUploadFile: mock(() => undefined),
+}));
+
+const auditLog = mock(async () => ({}));
+
+mock.module("../../src/modules/audit/audit.services.ts", () => ({
+  auditService: { log: auditLog },
 }));
 
 const { documentController } = await import(
@@ -109,6 +167,8 @@ describe("document endpoints", () => {
     findFolderById.mockClear();
     uploadToCloudinary.mockClear();
     deleteFromCloudinary.mockClear();
+    findShare.mockClear();
+    auditLog.mockClear();
 
     findById.mockImplementation(async () => documentRecord);
     findFolderById.mockImplementation(async () => ({
@@ -123,7 +183,7 @@ describe("document endpoints", () => {
       originalname: "contract.pdf",
       mimetype: "application/pdf",
       size: 100,
-      buffer: Buffer.from("test-pdf-content"),
+      buffer: Buffer.from("%PDF-1.4"),
     };
 
     await documentController.uploadDocument(
@@ -181,6 +241,25 @@ describe("document endpoints", () => {
       data: { id: documentId },
     });
     expect(findById).toHaveBeenCalledWith(documentId);
+  });
+
+  it("GET /documents/:documentId/download redirects to the signed download url", async () => {
+    const response = createResponse();
+
+    await documentController.downloadDocument(
+      {
+        params: { documentId },
+        user: { userId },
+      } as never,
+      response as never,
+    );
+
+    expect(response.redirect).toHaveBeenCalledWith(
+      302,
+      "https://res.cloudinary.com/example/download/contract.pdf",
+    );
+    expect(findById).toHaveBeenCalledWith(documentId);
+    expect(auditLog).toHaveBeenCalled();
   });
 
   it("DELETE /documents/:documentId soft-deletes one document", async () => {

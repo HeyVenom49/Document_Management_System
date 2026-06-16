@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { Forbidden } from "../../src/common/errors/forbidden.error.ts";
 import { NotFound } from "../../src/common/errors/not-found.error.ts";
 
 const documentId = "11111111-1111-4111-8111-111111111111";
@@ -10,6 +9,8 @@ const findById = mock(async () => ({
   ownerId: "user-1",
   currentVersion: 1,
 }));
+
+const findShare = mock(async () => null);
 
 const findLatestVersion = mock(async () => ({
   id: "version-1",
@@ -51,8 +52,33 @@ mock.module("../../src/modules/documents-versions/version.repository.ts", () => 
   versionRepository: { findLatestVersion, createVersion, findVersionById },
 }));
 
+mock.module("../../src/modules/share/document-share.repository.ts", () => ({
+  documentShareRepository: { findShare },
+}));
+
 mock.module("../../src/common/utils/cloudinary.ts", () => ({
   uploadToCloudinary,
+  withSignedFileUrl: <T>(resource: T) => resource,
+  withSignedFileUrls: <T>(resources: T[]) => resources,
+  toDownloadPayload: (
+    resource: { mimeType: string; fileSize: number },
+    fileName: string,
+  ) => ({
+    downloadUrl: `https://res.cloudinary.com/example/download/${fileName}`,
+    fileName,
+    mimeType: resource.mimeType,
+    fileSize: resource.fileSize,
+  }),
+}));
+
+mock.module("../../src/common/utils/file-validation.ts", () => ({
+  validateUploadFile: mock(() => undefined),
+}));
+
+const auditLog = mock(async () => ({}));
+
+mock.module("../../src/modules/audit/audit.services.ts", () => ({
+  auditService: { log: auditLog },
 }));
 
 const { versionService } = await import(
@@ -63,17 +89,19 @@ const file = {
   originalname: "contract-v2.pdf",
   mimetype: "application/pdf",
   size: 200,
-  buffer: Buffer.from("updated-pdf-content"),
+  buffer: Buffer.from("%PDF-1.4"),
 } as Express.Multer.File;
 
 describe("version service", () => {
   beforeEach(() => {
     findById.mockClear();
+    findShare.mockClear();
     findLatestVersion.mockClear();
     createVersion.mockClear();
     uploadToCloudinary.mockClear();
     updateVersionMetaData.mockClear();
     findVersionById.mockClear();
+    auditLog.mockClear();
 
     findById.mockImplementation(async () => ({
       id: documentId,
@@ -81,6 +109,7 @@ describe("version service", () => {
       ownerId: "user-1",
       currentVersion: 1,
     }));
+    findShare.mockImplementation(async () => null);
 
     findLatestVersion.mockImplementation(async () => ({
       id: "version-1",
@@ -131,7 +160,7 @@ describe("version service", () => {
     ).rejects.toThrow(NotFound);
   });
 
-  it("uploadVersion throws Forbidden when the user is not the owner", async () => {
+  it("uploadVersion throws NotFound when the user is not the owner", async () => {
     findById.mockImplementation(async () => ({
       id: documentId,
       name: "contract.pdf",
@@ -141,7 +170,7 @@ describe("version service", () => {
 
     await expect(
       versionService.uploadVersion(documentId, file, "user-1"),
-    ).rejects.toThrow(Forbidden);
+    ).rejects.toThrow(NotFound);
   });
 
   it("uploadVersion starts at version 1 when no prior versions exist", async () => {
@@ -152,6 +181,24 @@ describe("version service", () => {
     expect(createVersion).toHaveBeenCalledWith(
       expect.objectContaining({ versionNumber: 1 }),
     );
+  });
+
+  it("downloadVersion returns a signed download payload for the selected version", async () => {
+    const download = await versionService.downloadVersion(
+      documentId,
+      "version-1",
+      "user-1",
+    );
+
+    expect(findById).toHaveBeenCalledWith(documentId);
+    expect(findVersionById).toHaveBeenCalledWith("version-1");
+    expect(auditLog).toHaveBeenCalled();
+    expect(download).toEqual({
+      downloadUrl: "https://res.cloudinary.com/example/download/contract-v1.pdf",
+      fileName: "contract-v1.pdf",
+      mimeType: "application/pdf",
+      fileSize: 100,
+    });
   });
 
   it("restoreVersion updates document metadata to the selected version", async () => {

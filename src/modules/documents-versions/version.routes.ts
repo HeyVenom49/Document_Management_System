@@ -19,6 +19,11 @@ router.post(
   route(versionController, "restoreVersion"),
 );
 router.get(
+  "/:versionId/download",
+  authMiddleware,
+  route(versionController, "downloadVersion"),
+);
+router.get(
   "/:versionId",
   authMiddleware,
   route(versionController, "getVersionById"),

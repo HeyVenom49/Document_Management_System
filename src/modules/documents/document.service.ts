@@ -1,13 +1,24 @@
 import { AppError } from "../../common/errors/app.error.ts";
 import { BadRequest } from "../../common/errors/bad-request.error.ts";
+import { assertDocumentAccess } from "../../common/access/document-access.ts";
 import {
   assertDocumentOwner,
   assertDocumentOwnerIncludingDeleted,
   assertFolderOwner,
 } from "../../common/access/ownership.ts";
-import { uploadToCloudinary } from "../../common/utils/cloudinary.ts";
+import { AuditAction } from "../../common/constants/audit-action.ts";
+import {
+  uploadToCloudinary,
+  toDownloadPayload,
+  deleteFromCloudinary,
+  withSignedFileUrl,
+  withSignedFileUrls,
+} from "../../common/utils/cloudinary.ts";
+import { validateUploadFile } from "../../common/utils/file-validation.ts";
 import { requireUploadFile, toVersionFileFields } from "../../common/utils/upload.ts";
+import { auditService } from "../audit/audit.services.ts";
 import { versionRepository } from "../documents-versions/version.repository.ts";
+import { documentShareRepository } from "../share/document-share.repository.ts";
 import { documentRepository } from "./document.repository.ts";
 import type {
   GetDocumentInput,
@@ -22,6 +33,7 @@ export class DocumentService {
     userId: string,
   ) {
     const uploadFile = requireUploadFile(file);
+    validateUploadFile(uploadFile);
 
     if (data.folderId) {
       await assertFolderOwner(data.folderId, userId);
@@ -49,15 +61,54 @@ export class DocumentService {
       ...versionFields,
     });
 
-    return document;
+    await auditService.log({
+      userId,
+      documentId: document.id,
+      action: AuditAction.DOCUMENT_UPLOADED,
+      metadata: {
+        fileName: document.name,
+        mimeType: document.mimeType,
+      },
+    });
+
+    return withSignedFileUrl(document);
   }
 
   async getDocuments(userId: string) {
-    return await documentRepository.findByOwnerId(userId);
+    const documents = await documentRepository.findByOwnerId(userId);
+    return withSignedFileUrls(documents);
+  }
+
+  async getSharedDocuments(userId: string) {
+    const sharedDocuments =
+      await documentShareRepository.findSharedWithUser(userId);
+
+    return sharedDocuments.map(({ document, permission, sharedAt }) => ({
+      ...withSignedFileUrl(document),
+      sharePermission: permission,
+      sharedAt,
+    }));
   }
 
   async getDocumentById(documentId: string, userId: string) {
-    return await assertDocumentOwner(documentId, userId);
+    const document = await assertDocumentAccess(documentId, userId, "viewer");
+    return withSignedFileUrl(document);
+  }
+
+  async downloadDocument(documentId: string, userId: string) {
+    const document = await assertDocumentAccess(documentId, userId, "viewer");
+
+    await auditService.log({
+      userId,
+      documentId,
+      action: AuditAction.DOCUMENT_DOWNLOADED,
+      metadata: {
+        fileName: document.name,
+        versionNumber: document.currentVersion,
+      },
+    });
+
+    return toDownloadPayload(document, document.name);
   }
 
   async deleteDocument(documentId: string, userId: string) {
@@ -76,7 +127,8 @@ export class DocumentService {
 
   async getDocumentsByFolder(folderId: string, userId: string) {
     await assertFolderOwner(folderId, userId);
-    return await documentRepository.findByFolderId(folderId);
+    const documents = await documentRepository.findByFolderId(folderId);
+    return withSignedFileUrls(documents);
   }
 
   async updateDocument(
@@ -111,7 +163,7 @@ export class DocumentService {
       throw new AppError("Failed to update document", 500);
     }
 
-    return updatedDocument;
+    return withSignedFileUrl(updatedDocument);
   }
 
   async searchDocuments(userId: string, query: GetDocumentInput) {
@@ -126,7 +178,7 @@ export class DocumentService {
     const total = await documentRepository.countDocuments(userId, search);
 
     return {
-      documents,
+      documents: withSignedFileUrls(documents),
       pagination: {
         page,
         limit,
@@ -152,11 +204,58 @@ export class DocumentService {
       throw new AppError("Failed to restore document", 500);
     }
 
-    return restored;
+    return withSignedFileUrl(restored);
   }
 
   async getTrash(userId: string) {
-    return await documentRepository.findTrashByOwnerId(userId);
+    const documents = await documentRepository.findTrashByOwnerId(userId);
+    return withSignedFileUrls(documents);
+  }
+
+  async permanentlyDeleteDocument(documentId: string, userId: string) {
+    const document = await assertDocumentOwnerIncludingDeleted(
+      documentId,
+      userId,
+    );
+
+    if (!document.deletedAt) {
+      throw new BadRequest("Document must be in trash before permanent deletion");
+    }
+
+    const versions = await versionRepository.findByDocumentId(documentId);
+    const cloudinaryAssets = new Map<string, string | null | undefined>();
+
+    for (const version of versions) {
+      cloudinaryAssets.set(version.cloudinaryPublicId, document.cloudinaryResourceType);
+    }
+
+    cloudinaryAssets.set(
+      document.cloudinaryPublicId,
+      document.cloudinaryResourceType,
+    );
+
+    for (const [publicId, resourceType] of cloudinaryAssets) {
+      await deleteFromCloudinary(publicId, resourceType);
+    }
+
+    await documentShareRepository.removeAllSharesForDocument(documentId);
+
+    const deleted = await documentRepository.hardDelete(documentId);
+
+    if (!deleted) {
+      throw new AppError("Failed to permanently delete document", 500);
+    }
+
+    await auditService.log({
+      userId,
+      documentId,
+      action: AuditAction.DOCUMENT_PERMANENTLY_DELETED,
+      metadata: { fileName: document.name },
+    });
+
+    return {
+      message: "Document permanently deleted",
+    };
   }
 }
 

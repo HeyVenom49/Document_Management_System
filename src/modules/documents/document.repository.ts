@@ -172,6 +172,15 @@ export class DocumentRepository {
       .where(eq(documents.id, documentId));
     return document ?? null;
   }
+
+  async hardDelete(documentId: string) {
+    const [document] = await db
+      .delete(documents)
+      .where(eq(documents.id, documentId))
+      .returning();
+
+    return document ?? null;
+  }
 }
 
 export const documentRepository = new DocumentRepository();

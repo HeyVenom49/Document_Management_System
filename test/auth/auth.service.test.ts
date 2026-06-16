@@ -23,6 +23,7 @@ const findById = mock(async () => ({
   username: "venom",
   email: "venom@example.com",
   password_hash: "hash",
+  is_active: true,
 }));
 
 mock.module("../../src/modules/auth/refresh-token.repository.ts", () => ({
@@ -61,6 +62,7 @@ describe("auth service", () => {
       username: "venom",
       email: "venom@example.com",
       password_hash: "hash",
+      is_active: true,
     }));
 
     createRefreshToken.mockImplementation(async () => ({
@@ -77,10 +79,7 @@ describe("auth service", () => {
     expect(createRefreshToken).toHaveBeenCalled();
     expect(result).toEqual({
       accessToken: "new-access-token",
-      newRefreshToken: {
-        token: newRefreshToken,
-        userId: "user-1",
-      },
+      refreshToken: newRefreshToken,
     });
   });
 
