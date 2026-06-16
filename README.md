@@ -45,7 +45,7 @@ A Bun + Express backend API for managing users, folders, documents, versions, sh
 
 ## Prerequisites
 
-- [Bun](https://bun.sh)
+- [Bun](https://bun.sh) / [Node](https://nodejs.org)
 - Docker (for local PostgreSQL)
 - A Cloudinary account
 
